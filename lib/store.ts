@@ -1,9 +1,15 @@
 "use client";
 
 /* ──────────────────────────────────────────────────────────
-   Lightweight, localStorage-backed per-user store.
-   Everything starts empty / at zero for a fresh account.
+   Per-user store. localStorage is a fast cache; the critical
+   data (onboarding, measurements, credits, settings) is also
+   mirrored to Firestore so it survives localStorage overflow
+   and syncs across devices. All Firestore calls fail safely
+   (fall back to localStorage) if Firestore isn't reachable.
    ────────────────────────────────────────────────────────── */
+
+import { db } from "./firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export interface UserProfile {
   onboarded: boolean;
@@ -85,12 +91,59 @@ function pruneStorage() {
   }
 }
 
+/* ── Firestore mirror (source of truth for the small critical data) ── */
+const userRef = (uid: string) => doc(db, "users", uid);
+
+async function saveUserDoc(uid: string, data: Record<string, unknown>) {
+  try { await setDoc(userRef(uid), data, { merge: true }); } catch { /* offline / not enabled */ }
+}
+
+function remoteProfilePayload(p: UserProfile): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    onboarded: !!p.onboarded,
+    gender: p.gender || "",
+    heightCm: p.heightCm ?? null,
+    weightKg: p.weightKg ?? null,
+  };
+  // keep the Firestore doc safely under the 1MB limit
+  if (p.photo && p.photo.length < 700_000) out.photo = p.photo;
+  return out;
+}
+
+/* Pull the remote doc into the local cache (call once after auth resolves).
+   Remote wins for profile/settings; for credits we keep the higher count so
+   usage is never under-counted. */
+export async function pullRemote(uid: string): Promise<void> {
+  let snap;
+  try { snap = await getDoc(userRef(uid)); } catch { return; }
+  if (!snap || !snap.exists()) return;
+  const r = snap.data() as Record<string, unknown>;
+
+  const localP = getProfile(uid);
+  const merged: UserProfile = {
+    onboarded: typeof r.onboarded === "boolean" ? r.onboarded : localP.onboarded,
+    gender: (r.gender as UserProfile["gender"]) ?? localP.gender,
+    heightCm: (r.heightCm as number | null) ?? localP.heightCm,
+    weightKg: (r.weightKg as number | null) ?? localP.weightKg,
+    photo: (r.photo as string | null) ?? localP.photo,
+  };
+  write(PROFILE_KEY(uid), merged);
+
+  if (typeof r.tryons === "number") {
+    write(TRYON_KEY(uid), Math.max(getTryOns(uid), r.tryons));
+  }
+  if (r.settings && typeof r.settings === "object") {
+    write(SETTINGS_KEY(uid), { ...defaultSettings, ...(r.settings as object) });
+  }
+}
+
 /* Profile */
 export function getProfile(uid: string): UserProfile {
   return { ...emptyProfile, ...read<UserProfile>(PROFILE_KEY(uid), emptyProfile) };
 }
 export function saveProfile(uid: string, p: UserProfile) {
   write(PROFILE_KEY(uid), p);
+  void saveUserDoc(uid, remoteProfilePayload(p));   // mirror to Firestore
 }
 
 /* Wardrobe */
@@ -125,6 +178,7 @@ export function getSettings(uid: string): UserSettings {
 }
 export function saveSettings(uid: string, s: UserSettings) {
   write(SETTINGS_KEY(uid), s);
+  void saveUserDoc(uid, { settings: s });
 }
 
 /* Try-on counter */
@@ -134,6 +188,7 @@ export function getTryOns(uid: string): number {
 export function incTryOns(uid: string): number {
   const n = getTryOns(uid) + 1;
   write(TRYON_KEY(uid), n);
+  void saveUserDoc(uid, { tryons: n });
   return n;
 }
 

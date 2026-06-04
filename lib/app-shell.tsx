@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { getProfile } from "@/lib/store";
+import { getProfile, pullRemote } from "@/lib/store";
 import { IconSpark, IconHanger, IconUser, IconSignOut, IconPanel } from "@/lib/icons";
 
 const NAV = [
@@ -22,6 +22,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [signingOut, setSigningOut] = useState(false);
   const [collapsed, setCollapsed]   = useState(false);
   const [photo, setPhoto]           = useState<string | null>(null);
+  const [ready, setReady]           = useState(false);
 
   useEffect(() => onAuthStateChanged(auth, (u) => setUser(u)), []);
 
@@ -38,17 +39,25 @@ export default function AppShell({ children }: { children: ReactNode }) {
     });
   };
 
-  /* auth + onboarding gating */
+  /* auth + onboarding gating (waits for the Firestore sync first) */
   useEffect(() => {
     if (user === null) { router.replace("/signin"); return; }
     if (user && user !== "loading") {
-      const p = getProfile(user.uid);
-      setPhoto(p.photo);
-      if (!p.onboarded) router.replace("/onboarding");
+      let cancelled = false;
+      (async () => {
+        // sync from Firestore (never hang the gate more than ~4s)
+        await Promise.race([pullRemote(user.uid), new Promise((r) => setTimeout(r, 4000))]);
+        if (cancelled) return;
+        const p = getProfile(user.uid);
+        setPhoto(p.photo);
+        if (!p.onboarded) { router.replace("/onboarding"); return; }
+        setReady(true);
+      })();
+      return () => { cancelled = true; };
     }
   }, [user, router]);
 
-  if (user === "loading" || user === null) {
+  if (user === "loading" || user === null || !ready) {
     return (
       <div style={{ display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"var(--bg)" }}>
         <div className="spinner-dark" style={{ width:24,height:24 }} />

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { getProfile, saveProfile, fileToResizedDataURL, UserProfile } from "@/lib/store";
+import { getProfile, saveProfile, pullRemote, fileToResizedDataURL, UserProfile } from "@/lib/store";
 import { IconCamera, IconArrowRight, IconCheck } from "@/lib/icons";
 
 const GENDERS: { v: UserProfile["gender"]; label: string }[] = [
@@ -31,12 +31,18 @@ export default function Onboarding() {
   useEffect(() => {
     if (user === null) { router.replace("/signin"); return; }
     if (user && user !== "loading") {
-      const p = getProfile(user.uid);
-      setWasOnboarded(p.onboarded);
-      if (p.photo)    setPhoto(p.photo);
-      if (p.gender)   setGender(p.gender);
-      if (p.heightCm) setHeight(String(p.heightCm));
-      if (p.weightKg) setWeight(String(p.weightKg));
+      let cancelled = false;
+      (async () => {
+        await Promise.race([pullRemote(user.uid), new Promise((r) => setTimeout(r, 4000))]);
+        if (cancelled) return;
+        const p = getProfile(user.uid);
+        setWasOnboarded(p.onboarded);
+        if (p.photo)    setPhoto(p.photo);
+        if (p.gender)   setGender(p.gender);
+        if (p.heightCm) setHeight(String(p.heightCm));
+        if (p.weightKg) setWeight(String(p.weightKg));
+      })();
+      return () => { cancelled = true; };
     }
   }, [user, router]);
 
