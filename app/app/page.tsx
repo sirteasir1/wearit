@@ -5,7 +5,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import AppShell from "@/lib/app-shell";
 import {
-  getProfile, getTryOns, incTryOns, addWardrobeItem, dataURLToFile, WardrobeItem, FREE_MONTHLY,
+  getProfile, getTryOns, incTryOns, addWardrobeItem, dataURLToFile, dataURLToThumb, WardrobeItem, FREE_MONTHLY,
 } from "@/lib/store";
 import {
   IconSpark, IconUpload, IconHeart, IconHeartFilled, IconShare,
@@ -177,19 +177,21 @@ export default function TryOnApp() {
     }
   };
 
-  const saveToWardrobe = () => {
+  const saveToWardrobe = async () => {
     if (!result || !uid || saved) return;
+    setSaved(true);
+    // store a small thumbnail (not the full-res image) so localStorage never overflows
+    const thumb = await dataURLToThumb(result.resultImageUrl, 560, 0.72);
     addWardrobeItem(uid, {
       id: String(Date.now()),
       name: `${CAT_LABEL[cat]} try-on`,
       category: CAT_LABEL[cat],
       verdict: result.styleAdvice.verdict,
       score: result.styleAdvice.score,
-      img: result.resultImageUrl,
+      img: thumb,
       fav: true,
       createdAt: Date.now(),
     });
-    setSaved(true);
     toast("Saved to your wardrobe", "success");
   };
 
@@ -394,7 +396,7 @@ export default function TryOnApp() {
             <div style={{ position:"relative",flexShrink:0,overflow:"hidden" }}>
               {photo
                 ? <BeforeAfter before={photo} after={result.resultImageUrl} />
-                : <img src={result.resultImageUrl} alt="Your look" className="result-img" style={{ width:"100%",display:"block",maxHeight:"60vh",objectFit:"cover" }}/>}
+                : <img src={result.resultImageUrl} alt="Your look" className="result-img" style={{ width:"100%",display:"block",height:"70vh",objectFit:"contain",background:"#14100A" }}/>}
               <div style={{ position:"absolute",top:16,right:16,display:"flex",gap:8,zIndex:5 }}>
                 <button onClick={saveToWardrobe} aria-label="Save to wardrobe" style={{ background:"rgba(255,252,247,0.9)",border:"none",borderRadius:100,width:38,height:38,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)",color:saved?"#b71c1c":"var(--ink)",transition:"transform .2s" }}
                   onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.08)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")}>

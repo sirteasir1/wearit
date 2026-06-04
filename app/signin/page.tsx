@@ -1,10 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   signInWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  onAuthStateChanged,
   AuthError,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -20,7 +21,10 @@ function authMessage(err: AuthError): string {
       return "Invalid email address.";
     case "auth/too-many-requests":
       return "Too many attempts. Try again later.";
+    case "auth/unauthorized-domain":
+      return "This domain isn't authorized in Firebase. Add it under Authentication → Settings → Authorized domains.";
     case "auth/popup-closed-by-user":
+    case "auth/cancelled-popup-request":
       return "";
     default:
       return "Sign-in failed. Please try again.";
@@ -32,6 +36,9 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  /* Already signed in? Go straight to the app. */
+  useEffect(() => onAuthStateChanged(auth, (u) => { if (u) window.location.replace("/app"); }), []);
 
   const afterAuth = () => { window.location.href = "/app"; };
 
@@ -55,6 +62,7 @@ export default function SignIn() {
       await signInWithPopup(auth, new GoogleAuthProvider());
       afterAuth();
     } catch (e) {
+      console.error("[google sign-in]", (e as AuthError)?.code, e);
       const msg = authMessage(e as AuthError);
       if (msg) setError(msg);
       setLoading(false);

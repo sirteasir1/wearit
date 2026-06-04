@@ -1490,14 +1490,15 @@ button, input, textarea, select, optgroup { font-family: inherit; }
 .ba {
   position: relative;
   width: 100%;
-  height: 60vh;
+  height: 70vh;
   overflow: hidden;
   cursor: ew-resize;
   user-select: none;
   touch-action: none;
   background: #14100A;
 }
-.ba img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+/* contain → the whole generated image is always visible (letterboxed, never cropped) */
+.ba img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
 .ba-before { z-index: 1; }
 .ba-divider {
   position: absolute; top: 0; bottom: 0;

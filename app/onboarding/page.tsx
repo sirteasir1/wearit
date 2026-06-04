@@ -52,7 +52,7 @@ export default function Onboarding() {
     if (!f.type.startsWith("image/")) return;
     setErr("");
     try {
-      setPhoto(await fileToResizedDataURL(f, 1100, 0.82));
+      setPhoto(await fileToResizedDataURL(f, 1000, 0.8));
     } catch {
       setErr("Couldn't read that image. Try another.");
     }

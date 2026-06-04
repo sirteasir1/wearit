@@ -73,6 +73,7 @@ export async function runTryOn(
     ],
     parameters: {
       sampleCount,
+      personGeneration: "allow_all",
     },
   };
 
@@ -124,7 +125,7 @@ export async function runTryOnFromBuffers(
         productImages: [{ image: { bytesBase64Encoded: garmentB64 } }],
       },
     ],
-    parameters: { sampleCount },
+    parameters: { sampleCount, personGeneration: "allow_all" },
   };
 
   const response = await fetch(ENDPOINT, {

@@ -1,11 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
   updateProfile,
+  onAuthStateChanged,
   AuthError,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -18,7 +19,10 @@ function authMessage(err: AuthError): string {
       return "Invalid email address.";
     case "auth/weak-password":
       return "Password must be at least 6 characters.";
+    case "auth/unauthorized-domain":
+      return "This domain isn't authorized in Firebase. Add it under Authentication → Settings → Authorized domains.";
     case "auth/popup-closed-by-user":
+    case "auth/cancelled-popup-request":
       return "";
     default:
       return "Sign-up failed. Please try again.";
@@ -32,6 +36,9 @@ export default function SignUp() {
   const [error,   setError]   = useState("");
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
+  /* Already signed in? Skip sign-up, go to the app. */
+  useEffect(() => onAuthStateChanged(auth, (u) => { if (u) window.location.replace("/app"); }), []);
+
   const afterAuth = () => { window.location.href = "/app"; };
 
   const submitGoogle = async () => {
@@ -41,6 +48,7 @@ export default function SignUp() {
       await signInWithPopup(auth, new GoogleAuthProvider());
       afterAuth();
     } catch (e) {
+      console.error("[google sign-up]", (e as AuthError)?.code, e);
       const msg = authMessage(e as AuthError);
       if (msg) setError(msg);
       setLoading(false);

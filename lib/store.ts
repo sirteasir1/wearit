@@ -51,10 +51,37 @@ function read<T>(key: string, fallback: T): T {
 
 function write(key: string, val: unknown) {
   if (typeof window === "undefined") return;
+  const data = JSON.stringify(val);
   try {
-    localStorage.setItem(key, JSON.stringify(val));
+    localStorage.setItem(key, data);
+    return;
   } catch {
-    /* quota — ignore */
+    // Out of space — free room by trimming saved wardrobe images, then retry once
+    // so that critical small keys (onboarded flag, credits) ALWAYS persist.
+    try {
+      pruneStorage();
+      localStorage.setItem(key, data);
+    } catch {
+      /* give up silently */
+    }
+  }
+}
+
+/* Keep only the newest wardrobe items so a few big looks can't fill the quota
+   and block the small profile/credits writes. */
+function pruneStorage() {
+  if (typeof window === "undefined") return;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith("wearit:wardrobe:")) continue;
+      const items = JSON.parse(localStorage.getItem(k) || "[]");
+      if (Array.isArray(items) && items.length > 8) {
+        localStorage.setItem(k, JSON.stringify(items.slice(0, 8)));
+      }
+    }
+  } catch {
+    /* ignore */
   }
 }
 
@@ -133,6 +160,29 @@ export function fileToResizedDataURL(file: File, maxDim = 1024, quality = 0.82):
       img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
+  });
+}
+
+/* Downscale a dataURL to a small thumbnail (keeps localStorage tiny). */
+export function dataURLToThumb(dataUrl: string, maxDim = 520, quality = 0.7): Promise<string> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") { resolve(dataUrl); return; }
+    const img = new Image();
+    img.onerror = () => resolve(dataUrl);
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return resolve(dataUrl);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      } catch { resolve(dataUrl); }
+    };
+    img.src = dataUrl;
   });
 }
 
