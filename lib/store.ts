@@ -132,6 +132,9 @@ export async function pullRemote(uid: string): Promise<void> {
   if (typeof r.tryons === "number") {
     write(TRYON_KEY(uid), Math.max(getTryOns(uid), r.tryons));
   }
+  if (r.plan === "pro" || r.plan === "free") {
+    write(PLAN_KEY(uid), r.plan);
+  }
   if (r.settings && typeof r.settings === "object") {
     write(SETTINGS_KEY(uid), { ...defaultSettings, ...(r.settings as object) });
   }
@@ -179,6 +182,16 @@ export function getSettings(uid: string): UserSettings {
 export function saveSettings(uid: string, s: UserSettings) {
   write(SETTINGS_KEY(uid), s);
   void saveUserDoc(uid, { settings: s });
+}
+
+/* Plan + credit limit */
+export type Plan = "free" | "pro";
+const PLAN_KEY = (uid: string) => `wearit:plan:${uid}`;
+export function getPlan(uid: string): Plan {
+  return read<Plan>(PLAN_KEY(uid), "free");
+}
+export function creditLimit(uid: string): number {
+  return getPlan(uid) === "pro" ? PRO_MONTHLY : FREE_MONTHLY;
 }
 
 /* Try-on counter */

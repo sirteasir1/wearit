@@ -5,8 +5,17 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import AppShell from "@/lib/app-shell";
 import {
-  getProfile, getTryOns, incTryOns, addWardrobeItem, dataURLToFile, dataURLToThumb, WardrobeItem, FREE_MONTHLY,
+  getProfile, getTryOns, incTryOns, addWardrobeItem, dataURLToFile, dataURLToThumb,
+  pullRemote, creditLimit, WardrobeItem, FREE_MONTHLY,
 } from "@/lib/store";
+
+const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
+function checkoutHref(uid: string | null, email: string | null): string {
+  if (uid && PRO_PRODUCT) {
+    return `/api/checkout?products=${PRO_PRODUCT}&customerExternalId=${uid}&customerEmail=${encodeURIComponent(email || "")}`;
+  }
+  return "/#pricing";
+}
 import {
   IconSpark, IconUpload, IconHeart, IconHeartFilled, IconShare,
   IconLink, IconBulb, IconInstagram, IconCheck, IconArrowRight,
@@ -105,17 +114,24 @@ export default function TryOnApp() {
   const [body, setBody]       = useState<Body>({ heightCm: null, weightKg: null, gender: "" });
   const [linkUrl, setLinkUrl] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
+  const [email, setEmail]     = useState<string | null>(null);
 
   const garmentRef = useRef<HTMLInputElement>(null);
 
   /* The model photo + measurements + credits come from the saved profile */
-  useEffect(() => onAuthStateChanged(auth, (u) => {
+  useEffect(() => onAuthStateChanged(auth, async (u) => {
     if (!u) return;
     setUid(u.uid);
+    setEmail(u.email);
+    // if we just came back from a successful upgrade, re-sync the plan first
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("upgraded")) {
+      await pullRemote(u.uid);
+      toast("Welcome to Pro — 40 credits unlocked", "success");
+    }
     const p = getProfile(u.uid);
     setPhoto(p.photo);
     setBody({ heightCm: p.heightCm, weightKg: p.weightKg, gender: p.gender });
-    setCredits(Math.max(0, FREE_MONTHLY - getTryOns(u.uid)));
+    setCredits(Math.max(0, creditLimit(u.uid) - getTryOns(u.uid)));
   }), []);
 
   useEffect(() => {
@@ -169,7 +185,7 @@ export default function TryOnApp() {
       setProg(100);
       await new Promise(res => setTimeout(res, 300));
       setResult(d);
-      if (uid) { const n = incTryOns(uid); setCredits(Math.max(0, FREE_MONTHLY - n)); }
+      if (uid) { const n = incTryOns(uid); setCredits(Math.max(0, creditLimit(uid) - n)); }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -348,9 +364,9 @@ export default function TryOnApp() {
               )}
 
               {credits <= 0 ? (
-                <Link href="/#pricing" className="btn-dark" style={{ width:"100%",padding:"16px",fontSize:15,borderRadius:8,gap:8 }}>
+                <a href={checkoutHref(uid, email)} className="btn-dark" style={{ width:"100%",padding:"16px",fontSize:15,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
                   Out of credits — upgrade to Pro <IconArrowRight size={16}/>
-                </Link>
+                </a>
               ) : (
                 <button className={`btn-dark${garment&&!loading?" btn-ready":""}`} onClick={generate} disabled={!garment||loading}
                   style={{ width:"100%",padding:"16px",fontSize:15,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:10 }}>

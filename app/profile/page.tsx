@@ -6,8 +6,10 @@ import { auth } from "@/lib/firebase";
 import AppShell from "@/lib/app-shell";
 import {
   getProfile, getWardrobe, getTryOns, getSettings, saveSettings,
-  FREE_MONTHLY, UserProfile, UserSettings, defaultSettings,
+  getPlan, creditLimit, FREE_MONTHLY, PRO_MONTHLY, UserProfile, UserSettings, defaultSettings,
 } from "@/lib/store";
+
+const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
 import { IconArrowRight, IconCheck } from "@/lib/icons";
 import { toast } from "@/lib/toast";
 
@@ -18,6 +20,7 @@ export default function Profile() {
   const [profile, setProfile]   = useState<UserProfile | null>(null);
   const [stats, setStats]       = useState({ wardrobe: 0, tryons: 0, favorites: 0, left: FREE_MONTHLY });
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
+  const [plan, setPlan]         = useState<"free" | "pro">("free");
 
   useEffect(() => onAuthStateChanged(auth, (u) => {
     if (!u) return;
@@ -28,11 +31,12 @@ export default function Profile() {
     const t  = getTryOns(u.uid);
     setProfile(p);
     setSettings(getSettings(u.uid));
+    setPlan(getPlan(u.uid));
     setStats({
       wardrobe: wd.length,
       tryons: t,
       favorites: wd.filter(i => i.fav).length,
-      left: Math.max(0, FREE_MONTHLY - t),
+      left: Math.max(0, creditLimit(u.uid) - t),
     });
   }), []);
 
@@ -193,12 +197,20 @@ export default function Profile() {
         <div style={{ background:"var(--ink)",borderRadius:16,padding:"30px",marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between",gap:20,flexWrap:"wrap" }}>
           <div>
             <p style={{ fontSize:11,color:"rgba(255,255,255,0.35)",letterSpacing:"0.1em",marginBottom:8,fontWeight:500 }}>CURRENT PLAN</p>
-            <p style={{ fontSize:22,fontWeight:500,color:"#fff",marginBottom:4 }}>Free</p>
-            <p style={{ fontSize:14,color:"rgba(255,255,255,0.45)",fontWeight:300 }}>{FREE_MONTHLY} credits · {stats.left} left · 1 credit = 1 try-on</p>
+            <p style={{ fontSize:22,fontWeight:500,color:"#fff",marginBottom:4 }}>{plan === "pro" ? "Pro" : "Free"}</p>
+            <p style={{ fontSize:14,color:"rgba(255,255,255,0.45)",fontWeight:300 }}>{plan === "pro" ? PRO_MONTHLY : FREE_MONTHLY} credits · {stats.left} left · 1 credit = 1 try-on</p>
           </div>
-          <Link href="/#pricing" style={{ background:"#fff",color:"var(--ink)",borderRadius:4,padding:"12px 26px",fontSize:14,fontWeight:500,textDecoration:"none",display:"flex",alignItems:"center",gap:8 }}>
-            Upgrade to Pro <IconArrowRight size={15}/>
-          </Link>
+          {plan === "pro" ? (
+            <span style={{ display:"inline-flex",alignItems:"center",gap:8,background:"rgba(176,138,62,0.18)",color:"#FFD9A8",border:"1px solid rgba(176,138,62,0.4)",borderRadius:100,padding:"10px 20px",fontSize:13,fontWeight:600,letterSpacing:"0.04em" }}>
+              ★ Pro active
+            </span>
+          ) : (
+            <a
+              href={user && PRO_PRODUCT ? `/api/checkout?products=${PRO_PRODUCT}&customerExternalId=${user.uid}&customerEmail=${encodeURIComponent(user.email || "")}` : "/#pricing"}
+              style={{ background:"#fff",color:"var(--ink)",borderRadius:4,padding:"12px 26px",fontSize:14,fontWeight:500,textDecoration:"none",display:"flex",alignItems:"center",gap:8 }}>
+              Upgrade to Pro <IconArrowRight size={15}/>
+            </a>
+          )}
         </div>
 
         {/* Settings */}
