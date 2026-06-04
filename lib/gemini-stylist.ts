@@ -70,31 +70,48 @@ export async function getStyleAdvice(
     };
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-  const base64 = resultDataUrl.includes(",") ? resultDataUrl.split(",")[1] : resultDataUrl;
+    const base64 = resultDataUrl.includes(",") ? resultDataUrl.split(",")[1] : resultDataUrl;
 
-  const result = await model.generateContent([
-    { inlineData: { mimeType: "image/png", data: base64 } },
-    buildPrompt(profile),
-  ]);
+    const result = await model.generateContent([
+      { inlineData: { mimeType: "image/png", data: base64 } },
+      buildPrompt(profile),
+    ]);
 
-  const text = result.response.text();
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("Invalid Gemini response");
+    const text = result.response.text();
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("Invalid Gemini response");
 
-  const parsed = JSON.parse(match[0]) as Partial<StyleAdvice>;
-  return {
-    verdict: parsed.verdict ?? "maybe",
-    score: parsed.score ?? 7,
-    summary: parsed.summary ?? "",
-    pros: parsed.pros ?? [],
-    cons: parsed.cons ?? [],
-    tip: parsed.tip ?? "",
-    recommendedSize: parsed.recommendedSize || guessSize(profile),
-    sizeReason: parsed.sizeReason ?? "",
-  };
+    const parsed = JSON.parse(match[0]) as Partial<StyleAdvice>;
+    return {
+      verdict: parsed.verdict ?? "maybe",
+      score: parsed.score ?? 7,
+      summary: parsed.summary ?? "",
+      pros: parsed.pros ?? [],
+      cons: parsed.cons ?? [],
+      tip: parsed.tip ?? "",
+      recommendedSize: parsed.recommendedSize || guessSize(profile),
+      sizeReason: parsed.sizeReason ?? "",
+    };
+  } catch (e) {
+    // Gemini rate-limited / errored — DON'T fail the whole try-on.
+    // The generated image still shows, with a size estimated from the body.
+    console.error("[gemini-stylist]", e instanceof Error ? e.message : e);
+    const size = guessSize(profile);
+    return {
+      verdict: "maybe",
+      score: 7,
+      summary: "Your look is ready. The AI stylist is busy right now — try again in a minute for the full critique.",
+      pros: ["The fit looks wearable on you"],
+      cons: ["Full style analysis is temporarily unavailable"],
+      tip: "Tap “Try it on” again shortly for a detailed verdict.",
+      recommendedSize: size,
+      sizeReason: size ? "Estimated from your height and weight." : "",
+    };
+  }
 }
 
 /** Rough size estimate from BMI-ish heuristic, used as a fallback. */
