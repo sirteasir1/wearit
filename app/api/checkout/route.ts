@@ -21,6 +21,10 @@ export async function GET(req: NextRequest) {
   try {
     return await handler(req);
   } catch (e) {
+    // Next's redirect() works by throwing — let a real redirect through.
+    if (e && typeof e === "object" && "digest" in e && String((e as { digest?: string }).digest).startsWith("NEXT_REDIRECT")) {
+      throw e;
+    }
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[checkout] error:", msg);
     return NextResponse.json(
