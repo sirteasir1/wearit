@@ -420,6 +420,17 @@ export default function TryOnApp() {
                   <div style={{ height:"100%",width:`${result.styleAdvice.score*10}%`,background:vc.color,borderRadius:2,transition:"width 1s ease" }}/>
                 </div>
 
+                {/* Prominent save action */}
+                <button
+                  onClick={saveToWardrobe}
+                  disabled={saved}
+                  className={saved ? "btn-outline" : "btn-dark"}
+                  style={{ width:"100%",padding:"14px",fontSize:14,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",gap:9,marginBottom:20,...(saved?{color:"#1a7a2e",borderColor:"rgba(26,122,46,0.4)"}:{}) }}>
+                  {saved
+                    ? <><IconCheck size={16}/> Saved to wardrobe</>
+                    : <><IconHeart size={17}/> Save to wardrobe</>}
+                </button>
+
                 <p style={{ fontSize:15,color:"rgba(26,22,17,0.78)",lineHeight:1.7,marginBottom:20,fontWeight:300 }}>{result.styleAdvice.summary}</p>
 
                 {result.styleAdvice.recommendedSize && (
@@ -460,12 +471,6 @@ export default function TryOnApp() {
                     <button className="share-btn" onClick={()=>share("copy")}><IconLink size={15}/> Copy link</button>
                   </div>
                 </div>
-
-                {saved && (
-                  <div style={{ marginTop:18,display:"flex",alignItems:"center",gap:8,fontSize:13,color:"#1a7a2e" }}>
-                    <IconCheck size={15}/> Saved to your wardrobe
-                  </div>
-                )}
 
                 <button onClick={()=>{ setResult(null); setGarment(null); setError(null); }} className="btn-outline"
                   style={{ width:"100%",padding:"13px",fontSize:14,marginTop:20,borderRadius:8 }}>

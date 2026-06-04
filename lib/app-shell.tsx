@@ -15,14 +15,17 @@ const NAV = [
 
 const SIDEBAR_KEY = "wearit:sidebar-collapsed";
 
+/* Sync from Firestore only once per page load, not on every navigation. */
+let didInitialSync = false;
+
 export default function AppShell({ children }: { children: ReactNode }) {
   const path   = usePathname();
   const router = useRouter();
-  const [user, setUser]             = useState<User | null | "loading">("loading");
+  const [user, setUser]             = useState<User | null | "loading">(() => auth.currentUser ?? "loading");
   const [signingOut, setSigningOut] = useState(false);
   const [collapsed, setCollapsed]   = useState(false);
   const [photo, setPhoto]           = useState<string | null>(null);
-  const [ready, setReady]           = useState(false);
+  const [ready, setReady]           = useState(() => !!auth.currentUser && didInitialSync);
 
   useEffect(() => onAuthStateChanged(auth, (u) => setUser(u)), []);
 
@@ -39,22 +42,23 @@ export default function AppShell({ children }: { children: ReactNode }) {
     });
   };
 
-  /* auth + onboarding gating (waits for the Firestore sync first) */
+  /* auth + onboarding gating — pulls from Firestore only on the first load */
   useEffect(() => {
     if (user === null) { router.replace("/signin"); return; }
-    if (user && user !== "loading") {
-      let cancelled = false;
-      (async () => {
-        // sync from Firestore (never hang the gate more than ~4s)
+    if (user === "loading") return;
+    let cancelled = false;
+    (async () => {
+      if (!didInitialSync) {
         await Promise.race([pullRemote(user.uid), new Promise((r) => setTimeout(r, 4000))]);
-        if (cancelled) return;
-        const p = getProfile(user.uid);
-        setPhoto(p.photo);
-        if (!p.onboarded) { router.replace("/onboarding"); return; }
-        setReady(true);
-      })();
-      return () => { cancelled = true; };
-    }
+        didInitialSync = true;
+      }
+      if (cancelled) return;
+      const p = getProfile(user.uid);
+      setPhoto(p.photo);
+      if (!p.onboarded) { router.replace("/onboarding"); return; }
+      setReady(true);
+    })();
+    return () => { cancelled = true; };
   }, [user, router]);
 
   if (user === "loading" || user === null || !ready) {

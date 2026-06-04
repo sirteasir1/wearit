@@ -58,7 +58,8 @@ export default function Onboarding() {
     if (!f.type.startsWith("image/")) return;
     setErr("");
     try {
-      setPhoto(await fileToResizedDataURL(f, 1000, 0.8));
+      // keep it small enough to always sync via Firestore (cross-device), still good for try-on
+      setPhoto(await fileToResizedDataURL(f, 880, 0.72));
     } catch {
       setErr("Couldn't read that image. Try another.");
     }
