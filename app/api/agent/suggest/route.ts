@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getNotionEvents } from "@/lib/notion";
+import { adminAuth } from "@/lib/firebase-admin";
+import { getUserEvents } from "@/lib/integrations";
 import type { AgentEvent, Suggestion, WardrobeBrief } from "@/lib/agent";
 
 export const maxDuration = 30;
@@ -45,7 +47,19 @@ export async function POST(req: NextRequest) {
   } catch { /* defaults */ }
 
   const now = new Date(nowIso);
-  let events = await getNotionEvents(now);
+
+  // Per-user calendars first (Google + Notion, via their stored OAuth tokens).
+  let events: AgentEvent[] = [];
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    try {
+      const { uid } = await adminAuth().verifyIdToken(authHeader.split("Bearer ")[1]);
+      events = await getUserEvents(uid, now);
+    } catch { /* not signed in / token invalid — fall through */ }
+  }
+  // Dev fallback: the single env-configured Notion integration (your own).
+  if (events.length === 0) events = await getNotionEvents(now);
+
   const usingCalendar = events.length > 0;
   if (!usingCalendar) events = defaultEvents(now);
 

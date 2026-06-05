@@ -7,8 +7,10 @@ import AppShell from "@/lib/app-shell";
 import { getWardrobe, getProfile, getStyleProfile, saveStyleProfile, WardrobeItem, StyleProfile } from "@/lib/store";
 import type { Suggestion, WardrobeBrief, Piece } from "@/lib/agent";
 import { IconWand, IconSpark, IconHanger, IconSearch } from "@/lib/icons";
+import { toast } from "@/lib/toast";
 
 type RecoState = { busy?: boolean; error?: string; pieces?: Piece[] };
+type Provider = "google" | "notion";
 
 const brief = (wd: WardrobeItem[]): WardrobeBrief[] =>
   wd.map((w) => ({ id: w.id, name: w.name, category: w.category, verdict: w.verdict, score: w.score }));
@@ -22,6 +24,8 @@ export default function AgentPage() {
   const [style, setStyle]             = useState<StyleProfile | null>(null);
   const [learning, setLearning]       = useState(false);
   const [reco, setReco]               = useState<Record<string, RecoState>>({});
+  const [conns, setConns]             = useState<Provider[]>([]);
+  const [configured, setConfigured]   = useState<Record<Provider, boolean>>({ google: false, notion: false });
 
   const suggestOutfit = async (s: Suggestion) => {
     if (!uid) return;
@@ -59,9 +63,11 @@ export default function AgentPage() {
   const load = async (wd: WardrobeItem[], styleSummary: string) => {
     setLoading(true);
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const token = await auth.currentUser?.getIdToken();
+      if (token) headers.Authorization = `Bearer ${token}`;
       const r = await fetch("/api/agent/suggest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers,
         body: JSON.stringify({ now: new Date().toISOString(), wardrobe: brief(wd), style: styleSummary }),
       });
       const d = await r.json();
@@ -74,6 +80,47 @@ export default function AgentPage() {
     }
   };
 
+  const loadIntegrations = async () => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+      const r = await fetch("/api/integrations", { headers: { Authorization: `Bearer ${token}` } });
+      const d = await r.json();
+      if (Array.isArray(d.connected)) setConns(d.connected);
+      if (d.configured) setConfigured(d.configured);
+    } catch { /* ignore */ }
+  };
+
+  const connect = async (provider: Provider) => {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) return;
+    window.location.href = `/api/${provider}/connect?token=${encodeURIComponent(token)}`;
+  };
+
+  const disconnect = async (provider: Provider) => {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) return;
+    await fetch(`/api/integrations?provider=${provider}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    setConns((c) => c.filter((p) => p !== provider));
+    toast(`${provider === "google" ? "Google Calendar" : "Notion"} disconnected`);
+    load(items, style?.summary || "");
+  };
+
+  // toast + clean up the ?connected / ?error params after an OAuth round-trip
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const q = new URLSearchParams(window.location.search);
+    const connected = q.get("connected"), error = q.get("error");
+    if (connected) toast(`${connected === "google" ? "Google Calendar" : "Notion"} connected`, "success");
+    else if (error) {
+      const msg = error.endsWith("not_configured")
+        ? "That calendar isn't set up yet (missing OAuth keys)."
+        : "Couldn't connect — please try again.";
+      toast(msg, "error");
+    }
+    if (connected || error) window.history.replaceState({}, "", "/agent");
+  }, []);
+
   useEffect(() => onAuthStateChanged(auth, async (u) => {
     if (!u) return;
     setUid(u.uid);
@@ -81,6 +128,7 @@ export default function AgentPage() {
     setItems(wd);
     let s = getStyleProfile(u.uid);
     setStyle(s);
+    loadIntegrations();
     // (re)learn if we've never learned, or the wardrobe changed since
     if (wd.length > 0 && (!s || s.basedOn !== wd.length)) {
       s = await learnStyle(u.uid, wd);
@@ -125,19 +173,32 @@ export default function AgentPage() {
           </div>
         )}
 
-        {/* Connect banner */}
-        {!loading && !usingCalendar && (
-          <div className="card" style={{ padding: "18px 22px", marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", background: "linear-gradient(180deg, var(--brand-soft), var(--card))", borderColor: "var(--brand-ring)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ width: 38, height: 38, borderRadius: 10, background: "var(--brand)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconWand size={18} /></span>
-              <div>
-                <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>Connect your calendar</p>
-                <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>Link Notion or Google Calendar and I’ll style you for your real schedule.</p>
-              </div>
+        {/* Connect your calendars — each user links their own Google / Notion */}
+        <div className="card" style={{ padding: "18px 22px", marginBottom: 18, background: conns.length ? "var(--card)" : "linear-gradient(180deg, var(--brand-soft), var(--card))", borderColor: "var(--brand-ring)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+            <span style={{ width: 38, height: 38, borderRadius: 10, background: "var(--brand)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconWand size={18} /></span>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{conns.length ? "Your calendars" : "Connect your calendar"}</p>
+              <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>Link your own Google Calendar or Notion and I’ll style you for your real schedule.</p>
             </div>
-            <span style={{ fontSize: 12, color: "var(--brand)", fontWeight: 600, background: "rgba(47,76,110,0.1)", border: "1px solid var(--brand-ring)", padding: "6px 12px", borderRadius: 100 }}>Coming up</span>
           </div>
-        )}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {(["google", "notion"] as Provider[]).map((p) => {
+              const on = conns.includes(p);
+              const label = p === "google" ? "Google Calendar" : "Notion";
+              return on ? (
+                <span key={p} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 500, color: "var(--ink)", background: "var(--card)", border: "1px solid var(--brand-ring)", padding: "8px 14px", borderRadius: 100 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#1a7a2e" }} /> {label} connected
+                  <button onClick={() => disconnect(p)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 12, padding: 0, marginLeft: 2, textDecoration: "underline" }}>Disconnect</button>
+                </span>
+              ) : (
+                <button key={p} onClick={() => connect(p)} disabled={!configured[p]} className="btn-dark" style={{ padding: "9px 16px", fontSize: 13, gap: 7, opacity: configured[p] ? 1 : 0.45 }}>
+                  Connect {label}{!configured[p] && " · soon"}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Suggestions */}
         {loading ? (
