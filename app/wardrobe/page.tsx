@@ -120,11 +120,11 @@ export default function Wardrobe() {
               {cats.map(c => (
                 <button key={c} className="chip" onClick={()=>setFilter(c)} style={{
                   padding:"8px 18px",borderRadius:100,fontSize:13,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",
-                  background: filter===c ? "var(--ink)" : "var(--card)",
+                  background: filter===c ? "var(--brand)" : "var(--card)",
                   color:      filter===c ? "#fff" : "var(--muted)",
-                  border:     filter===c ? "1px solid var(--ink)" : "1px solid var(--border)",
+                  border:     filter===c ? "1px solid var(--brand)" : "1px solid var(--border)",
                   fontWeight: filter===c ? 500 : 400,
-                  boxShadow:  filter===c ? "0 6px 16px rgba(26,22,17,0.18)" : "none",
+                  boxShadow:  filter===c ? "0 6px 16px rgba(47,76,110,0.22)" : "none",
                 }}>{c}</button>
               ))}
             </div>

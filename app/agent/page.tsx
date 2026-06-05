@@ -1,0 +1,243 @@
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import AppShell from "@/lib/app-shell";
+import { getWardrobe, getProfile, getStyleProfile, saveStyleProfile, WardrobeItem, StyleProfile } from "@/lib/store";
+import type { Suggestion, WardrobeBrief, Piece } from "@/lib/agent";
+import { IconWand, IconSpark, IconHanger, IconSearch } from "@/lib/icons";
+
+type RecoState = { busy?: boolean; error?: string; pieces?: Piece[] };
+
+const brief = (wd: WardrobeItem[]): WardrobeBrief[] =>
+  wd.map((w) => ({ id: w.id, name: w.name, category: w.category, verdict: w.verdict, score: w.score }));
+
+export default function AgentPage() {
+  const [uid, setUid]                 = useState<string | null>(null);
+  const [items, setItems]             = useState<WardrobeItem[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [usingCalendar, setUsing]     = useState(false);
+  const [loading, setLoading]         = useState(true);
+  const [style, setStyle]             = useState<StyleProfile | null>(null);
+  const [learning, setLearning]       = useState(false);
+  const [reco, setReco]               = useState<Record<string, RecoState>>({});
+
+  const suggestOutfit = async (s: Suggestion) => {
+    if (!uid) return;
+    setReco((p) => ({ ...p, [s.id]: { busy: true } }));
+    try {
+      const gender = getProfile(uid).gender;
+      const r = await fetch("/api/agent/recommend", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ occasion: s.occasion, vibe: s.vibe, style: style?.summary || "", gender }),
+      });
+      const d = await r.json();
+      setReco((p) => ({ ...p, [s.id]: { pieces: d.pieces || [], error: d.error } }));
+    } catch {
+      setReco((p) => ({ ...p, [s.id]: { error: "Couldn't put a look together — try again." } }));
+    }
+  };
+
+  /* Learn (or re-learn) the user's style from their wardrobe + gender. */
+  const learnStyle = async (id: string, wd: WardrobeItem[]) => {
+    setLearning(true);
+    try {
+      const gender = getProfile(id).gender;
+      const r = await fetch("/api/agent/style", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wardrobe: brief(wd), gender }),
+      });
+      const s = (await r.json()) as StyleProfile;
+      saveStyleProfile(id, s);
+      setStyle(s);
+      return s;
+    } catch { return null; }
+    finally { setLearning(false); }
+  };
+
+  const load = async (wd: WardrobeItem[], styleSummary: string) => {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/agent/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ now: new Date().toISOString(), wardrobe: brief(wd), style: styleSummary }),
+      });
+      const d = await r.json();
+      setSuggestions(Array.isArray(d.suggestions) ? d.suggestions : []);
+      setUsing(!!d.usingCalendar);
+    } catch {
+      setSuggestions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => onAuthStateChanged(auth, async (u) => {
+    if (!u) return;
+    setUid(u.uid);
+    const wd = getWardrobe(u.uid);
+    setItems(wd);
+    let s = getStyleProfile(u.uid);
+    setStyle(s);
+    // (re)learn if we've never learned, or the wardrobe changed since
+    if (wd.length > 0 && (!s || s.basedOn !== wd.length)) {
+      s = await learnStyle(u.uid, wd);
+    }
+    load(wd, s?.summary || "");
+  }), []);
+
+  const refresh = async () => {
+    if (!uid) return;
+    const s = items.length > 0 ? await learnStyle(uid, items) : style;
+    load(items, s?.summary || "");
+  };
+
+  const imgFor = (id: string | null) => (id ? items.find((i) => i.id === id)?.img : undefined);
+
+  return (
+    <AppShell>
+      <div className="page-in" style={{ padding: "48px 44px", maxWidth: 820 }}>
+        <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 14, fontWeight: 600 }}>Your stylist</p>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 28 }}>
+          <h1 className="serif" style={{ fontSize: 46, fontWeight: 600, letterSpacing: "-0.035em", color: "var(--ink)" }}>Today’s plan</h1>
+          <button onClick={refresh} disabled={learning} className="chip" style={{ padding: "9px 16px", borderRadius: 100, fontSize: 13, background: "var(--card)", border: "1px solid var(--border)", color: "var(--ink)", cursor: "pointer", display: "flex", alignItems: "center", gap: 7, opacity: learning ? 0.6 : 1 }}>
+            <IconWand size={15} /> {learning ? "Learning…" : "Refresh"}
+          </button>
+        </div>
+
+        {/* Learned style — the agent's memory of your taste */}
+        {style && style.summary && (
+          <div className="card" style={{ padding: "20px 24px", marginBottom: 18 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ display: "inline-flex", color: "var(--brand)" }}><IconWand size={16} /></span>
+              <p style={{ fontSize: 12, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", fontWeight: 600 }}>Your style, learned</p>
+            </div>
+            <p className="serif" style={{ fontSize: 18, fontWeight: 400, color: "var(--ink)", lineHeight: 1.5, letterSpacing: "-0.01em", marginBottom: style.tags?.length ? 14 : 0 }}>{style.summary}</p>
+            {style.tags?.length > 0 && (
+              <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                {style.tags.map((t) => (
+                  <span key={t} style={{ fontSize: 12, color: "var(--brand)", background: "rgba(47,76,110,0.08)", border: "1px solid var(--brand-ring)", padding: "4px 11px", borderRadius: 100 }}>{t}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Connect banner */}
+        {!loading && !usingCalendar && (
+          <div className="card" style={{ padding: "18px 22px", marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", background: "linear-gradient(180deg, var(--brand-soft), var(--card))", borderColor: "var(--brand-ring)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ width: 38, height: 38, borderRadius: 10, background: "var(--brand)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconWand size={18} /></span>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>Connect your calendar</p>
+                <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>Link Notion or Google Calendar and I’ll style you for your real schedule.</p>
+              </div>
+            </div>
+            <span style={{ fontSize: 12, color: "var(--brand)", fontWeight: 600, background: "rgba(47,76,110,0.1)", border: "1px solid var(--brand-ring)", padding: "6px 12px", borderRadius: 100 }}>Coming up</span>
+          </div>
+        )}
+
+        {/* Suggestions */}
+        {loading ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {[0, 1, 2].map((i) => <div key={i} className="sk" style={{ height: 116, borderRadius: 16 }} />)}
+          </div>
+        ) : suggestions.length === 0 ? (
+          <div style={{ border: "1px dashed var(--border)", borderRadius: 16, padding: "60px 32px", textAlign: "center", background: "var(--card)" }}>
+            <div style={{ display: "inline-flex", color: "var(--faint)", marginBottom: 14 }}><IconWand size={36} /></div>
+            <p style={{ fontSize: 15, color: "var(--muted)" }}>Nothing to suggest yet — try a look on and I’ll start planning.</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {suggestions.map((s) => {
+              const img = imgFor(s.lookId);
+              return (
+                <div key={s.id} className="card" style={{ padding: 0, overflow: "hidden", display: "flex", alignItems: "stretch" }}>
+                  {img && (
+                    <img src={img} alt={s.lookName || ""} style={{ width: 120, objectFit: "cover", flexShrink: 0, borderRight: "1px solid var(--border)" }} />
+                  )}
+                  <div style={{ padding: "20px 22px", flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)", background: "rgba(47,76,110,0.1)", border: "1px solid var(--brand-ring)", padding: "3px 10px", borderRadius: 100 }}>{s.when}</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{s.occasion}</span>
+                      {s.vibe && <span style={{ fontSize: 12, color: "var(--muted)" }}>· {s.vibe}</span>}
+                    </div>
+                    <p className="serif" style={{ fontSize: 17, fontWeight: 400, color: "var(--ink)", lineHeight: 1.45, letterSpacing: "-0.01em", marginBottom: 8 }}>{s.message}</p>
+                    {s.reason && <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, marginBottom: 14 }}>{s.reason}</p>}
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {s.action === "wardrobe" && s.lookId && (
+                        <Link href="/wardrobe" className="btn-dark" style={{ padding: "9px 16px", fontSize: 13, gap: 7 }}>
+                          <IconHanger size={15} /> Wear this look
+                        </Link>
+                      )}
+                      {s.action === "tryon" && (
+                        <Link href="/app" className="btn-dark" style={{ padding: "9px 16px", fontSize: 13, gap: 7 }}>
+                          <IconSpark size={15} /> Try a look on
+                        </Link>
+                      )}
+                      <button onClick={() => suggestOutfit(s)} disabled={reco[s.id]?.busy} className={s.action === "shop" ? "btn-dark" : "btn-outline"} style={{ padding: "9px 16px", fontSize: 13, gap: 7, display: "inline-flex", alignItems: "center" }}>
+                        <IconSearch size={15} /> {reco[s.id]?.busy ? "Putting it together…" : reco[s.id]?.pieces ? "Suggest another" : "What should I wear?"}
+                      </button>
+                    </div>
+
+                    {/* Outfit recommendation */}
+                    {reco[s.id] && !reco[s.id].busy && (
+                      reco[s.id].error ? (
+                        <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 14 }}>{reco[s.id].error}</p>
+                      ) : reco[s.id].pieces?.length ? (
+                        <div style={{ marginTop: 16, padding: "16px 18px", border: "1px solid var(--brand-ring)", borderRadius: 12, background: "var(--brand-soft)" }}>
+                          <p style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand)", fontWeight: 600, marginBottom: 12 }}>Here’s a look</p>
+                          {reco[s.id].pieces!.some((p) => p.image) ? (
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(132px,1fr))", gap: 12 }}>
+                              {reco[s.id].pieces!.map((p, pi) => (
+                                <div key={pi} style={{ border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden", background: "var(--card)", display: "flex", flexDirection: "column" }}>
+                                  <div style={{ aspectRatio: "3/4", background: "#fff", overflow: "hidden", position: "relative" }}>
+                                    {p.image
+                                      ? <img src={p.image} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                      : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--faint)" }}><IconHanger size={26} /></div>}
+                                    <span style={{ position: "absolute", top: 8, left: 8, fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 600, color: "var(--brand)", background: "rgba(255,255,255,0.9)", padding: "3px 7px", borderRadius: 100 }}>{p.slot}</span>
+                                  </div>
+                                  <div style={{ padding: "10px 11px", display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
+                                    <p style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.name}</p>
+                                    {(p.brand || p.price) && (
+                                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginTop: "auto" }}>
+                                        {p.brand && <span style={{ fontSize: 10, color: "var(--faint)", textTransform: "capitalize" }}>{p.brand}</span>}
+                                        {p.price && <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>{p.price}</span>}
+                                      </div>
+                                    )}
+                                    <div style={{ display: "flex", gap: 6 }}>
+                                      {p.link && <a href={p.link} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ flex: 1, padding: "6px", fontSize: 11, justifyContent: "center" }}>View</a>}
+                                      {p.image && <Link href={`/app?garment=${encodeURIComponent(p.image)}`} className="btn-dark" style={{ flex: 1, padding: "6px", fontSize: 11, justifyContent: "center", gap: 4 }}><IconSpark size={12} /> Try</Link>}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+                              {reco[s.id].pieces!.map((p, pi) => (
+                                <div key={pi} style={{ display: "flex", gap: 11, alignItems: "flex-start" }}>
+                                  <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 100, background: "var(--brand)", color: "#fff", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1 }}>{pi + 1}</span>
+                                  <div style={{ minWidth: 0 }}>
+                                    <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", lineHeight: 1.4 }}>{p.name}</p>
+                                    {p.detail && <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.5, marginTop: 1 }}>{p.detail}</p>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : null
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </AppShell>
+  );
+}

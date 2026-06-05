@@ -135,6 +135,9 @@ export async function pullRemote(uid: string): Promise<void> {
   if (r.plan === "pro" || r.plan === "free") {
     write(PLAN_KEY(uid), r.plan);
   }
+  if (r.style && typeof r.style === "object") {
+    write(STYLE_KEY(uid), r.style);
+  }
   if (r.settings && typeof r.settings === "object") {
     write(SETTINGS_KEY(uid), { ...defaultSettings, ...(r.settings as object) });
   }
@@ -184,6 +187,22 @@ export function saveSettings(uid: string, s: UserSettings) {
   void saveUserDoc(uid, { settings: s });
 }
 
+/* Learned style profile — the agent's memory of the user's taste */
+export interface StyleProfile {
+  summary: string;     // 1–2 sentences, in 2nd person
+  tags: string[];      // e.g. ["minimal", "neutral palette", "relaxed fit"]
+  updatedAt: number;
+  basedOn: number;     // how many wardrobe items it was learned from
+}
+const STYLE_KEY = (uid: string) => `wearit:style:${uid}`;
+export function getStyleProfile(uid: string): StyleProfile | null {
+  return read<StyleProfile | null>(STYLE_KEY(uid), null);
+}
+export function saveStyleProfile(uid: string, s: StyleProfile) {
+  write(STYLE_KEY(uid), s);
+  void saveUserDoc(uid, { style: s });
+}
+
 /* Plan + credit limit */
 export type Plan = "free" | "pro";
 const PLAN_KEY = (uid: string) => `wearit:plan:${uid}`;
@@ -198,8 +217,8 @@ export function creditLimit(uid: string): number {
 export function getTryOns(uid: string): number {
   return read<number>(TRYON_KEY(uid), 0);
 }
-export function incTryOns(uid: string): number {
-  const n = getTryOns(uid) + 1;
+export function incTryOns(uid: string, by = 1): number {
+  const n = getTryOns(uid) + Math.max(1, by);
   write(TRYON_KEY(uid), n);
   void saveUserDoc(uid, { tryons: n });
   return n;

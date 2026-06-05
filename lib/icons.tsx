@@ -197,6 +197,14 @@ export const IconDownload = ({ size = 18, style, strokeWidth = 1.5 }: P) => (
   </svg>
 );
 
+/* Wand — AI stylist agent */
+export const IconWand = ({ size = 18, style, strokeWidth = 1.5 }: P) => (
+  <svg {...base(size)} style={style}>
+    <path d="M5 19l9-9M14.5 5.5l1 1M17 9l3.2-3.2a1.4 1.4 0 000-2l-.0-.0a1.4 1.4 0 00-2 0L15 7" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M6 4l.7 1.6L8.3 6.3 6.7 7 6 8.6 5.3 7 3.7 6.3 5.3 5.6 6 4zM18 13l.5 1.2 1.2.5-1.2.5L18 16.4 17.5 15.2 16.3 14.7 17.5 14.2 18 13z" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 /* Camera — photo */
 export const IconCamera = ({ size = 18, style, strokeWidth = 1.5 }: P) => (
   <svg {...base(size)} style={style}>

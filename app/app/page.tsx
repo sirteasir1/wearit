@@ -28,7 +28,8 @@ type Verdict  = "buy" | "skip" | "maybe";
 interface StyleAdvice { verdict: Verdict; score: number; summary: string; pros: string[]; cons: string[]; tip: string; recommendedSize?: string; sizeReason?: string; }
 type Body = { heightCm: number | null; weightKg: number | null; gender: string };
 interface Result { resultImageUrl: string; styleAdvice: StyleAdvice; remaining: number | "unlimited"; }
-type Upload = { file?: File; url: string } | null;
+type GItem = { id: string; file?: File; url: string; cat: Category };
+const MAX_GARMENTS = 4;
 
 const VERDICT = {
   buy:   { label: "Buy it",  color: "#1a7a2e", tag: "tag-green" },
@@ -102,8 +103,7 @@ function Confetti() {
 export default function TryOnApp() {
   const [uid, setUid]         = useState<string | null>(null);
   const [photo, setPhoto]     = useState<string | null>(null);
-  const [garment, setGarment] = useState<Upload>(null);
-  const [cat, setCat]         = useState<Category>("tops");
+  const [garments, setGarments] = useState<GItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState<Result|null>(null);
   const [error, setError]     = useState<string|null>(null);
@@ -141,24 +141,39 @@ export default function TryOnApp() {
     return () => clearInterval(id);
   }, [loading]);
 
+  const addGarment = (g: Omit<GItem, "id">): boolean => {
+    let added = false;
+    setGarments((prev) => {
+      if (prev.length >= MAX_GARMENTS) return prev;
+      added = true;
+      return [...prev, { ...g, id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }];
+    });
+    setResult(null); setError(null); setSaved(false);
+    return added;
+  };
+  const removeGarment   = (id: string) => setGarments((prev) => prev.filter((g) => g.id !== id));
+  const setGarmentCat   = (id: string, cat: Category) => setGarments((prev) => prev.map((g) => (g.id === id ? { ...g, cat } : g)));
+
   const onGarment = useCallback((f: File) => {
     if (!f.type.startsWith("image/") || f.size > 10_000_000) return;
-    setGarment({ file: f, url: URL.createObjectURL(f) });
+    setGarments((prev) => {
+      if (prev.length >= MAX_GARMENTS) { toast(`Up to ${MAX_GARMENTS} pieces per look`, "error"); return prev; }
+      return [...prev, { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, file: f, url: URL.createObjectURL(f), cat: "tops" }];
+    });
     setResult(null); setError(null); setSaved(false);
   }, []);
 
-  const useLink = async () => {
-    const u = linkUrl.trim();
+  const useLink = async (rawUrl?: string) => {
+    const u = (rawUrl ?? linkUrl).trim();
     if (!u || linkBusy) return;
+    if (garments.length >= MAX_GARMENTS) { toast(`Up to ${MAX_GARMENTS} pieces per look`, "error"); return; }
     setLinkBusy(true); setError(null);
     try {
       const r = await fetch("/api/fetch-image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: u }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Couldn't load that link");
       const file = await dataURLToFile(d.dataUrl, "garment.jpg");
-      setGarment({ file, url: d.dataUrl });
-      setResult(null); setSaved(false); setLinkUrl("");
-      toast("Garment loaded from link", "success");
+      if (addGarment({ file, url: d.dataUrl, cat: "tops" })) { setLinkUrl(""); toast("Garment added from link", "success"); }
     } catch (e) {
       toast(e instanceof Error ? e.message : "Couldn't load that link", "error");
     } finally {
@@ -166,16 +181,38 @@ export default function TryOnApp() {
     }
   };
 
+  // Auto-load a garment handed off from the Stylist's Shop Discovery (?garment=<url>).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const g = new URLSearchParams(window.location.search).get("garment");
+    if (!g) return;
+    useLink(g);
+    // clear the param so a refresh doesn't reload it
+    const url = new URL(window.location.href);
+    url.searchParams.delete("garment");
+    window.history.replaceState({}, "", url.toString());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const generate = async () => {
-    if (!photo || !garment || loading) return;
-    if (credits <= 0) { setError("You're out of credits. Upgrade to Pro for 40 a month."); return; }
+    const cost = garments.length;
+    if (!photo || cost === 0 || loading) return;
+    if (credits < cost) {
+      setError(cost > 1
+        ? `This look needs ${cost} credits — you have ${credits} left. Upgrade to Pro for more.`
+        : "You're out of credits. Upgrade to Pro for 40 a month.");
+      return;
+    }
     setLoading(true); setError(null); setResult(null); setSaved(false);
     try {
       const modelFile = await dataURLToFile(photo, "model.jpg");
       const fd = new FormData();
       fd.append("modelImage", modelFile);
-      fd.append("garmentImage", garment.file!);
-      fd.append("category", cat);
+      // layer order: bottoms → tops → one-pieces reads oddly; keep the user's add order
+      for (const g of garments) {
+        fd.append("garmentImage", g.file!);
+        fd.append("category", g.cat);
+      }
       if (body.heightCm) fd.append("heightCm", String(body.heightCm));
       if (body.weightKg) fd.append("weightKg", String(body.weightKg));
       if (body.gender)   fd.append("gender", body.gender);
@@ -185,7 +222,7 @@ export default function TryOnApp() {
       setProg(100);
       await new Promise(res => setTimeout(res, 300));
       setResult(d);
-      if (uid) { const n = incTryOns(uid); setCredits(Math.max(0, creditLimit(uid) - n)); }
+      if (uid) { const n = incTryOns(uid, cost); setCredits(Math.max(0, creditLimit(uid) - n)); }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -198,10 +235,11 @@ export default function TryOnApp() {
     setSaved(true);
     // store a small thumbnail (not the full-res image) so localStorage never overflows
     const thumb = await dataURLToThumb(result.resultImageUrl, 560, 0.72);
+    const primaryCat = garments[0]?.cat ?? "tops";
     addWardrobeItem(uid, {
       id: String(Date.now()),
-      name: `${CAT_LABEL[cat]} try-on`,
-      category: CAT_LABEL[cat],
+      name: garments.length > 1 ? `Full look · ${garments.length} pieces` : `${CAT_LABEL[primaryCat]} try-on`,
+      category: CAT_LABEL[primaryCat],
       verdict: result.styleAdvice.verdict,
       score: result.styleAdvice.score,
       img: thumb,
@@ -296,29 +334,68 @@ export default function TryOnApp() {
                 <Link href="/onboarding" style={{ fontSize:12,color:"var(--ink)",textDecoration:"none",border:"1px solid var(--border)",padding:"7px 14px",borderRadius:6 }}>Change</Link>
               </div>
 
-              {/* Garment — the only thing to add */}
-              <p style={{ fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--faint)",marginBottom:10,fontWeight:500 }}>The garment</p>
-              <div
-                className={`upload-zone${drag?" drag":""}`}
-                style={{ minHeight:300,position:"relative",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:26 }}
-                onClick={()=>!garment&&garmentRef.current?.click()}
-                onDragOver={e=>{e.preventDefault();setDrag(true);}}
-                onDragLeave={()=>setDrag(false)}
-                onDrop={e=>{e.preventDefault();setDrag(false);const f=e.dataTransfer.files[0];if(f)onGarment(f);}}
-              >
-                {garment ? (
-                  <>
-                    <img src={garment.url} alt="" style={{ position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover" }}/>
-                    <button onClick={e=>{e.stopPropagation();garmentRef.current?.click();}} style={{ position:"absolute",top:10,right:10,background:"rgba(255,252,247,0.94)",border:"1px solid var(--border)",borderRadius:6,fontSize:12,padding:"6px 14px",cursor:"pointer",backdropFilter:"blur(8px)",color:"var(--ink)" }}>Change garment</button>
-                  </>
-                ) : (
+              {/* Your look — one or more pieces, layered on you together */}
+              <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8 }}>
+                <p style={{ fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--faint)",fontWeight:500 }}>Your look</p>
+                <span style={{ fontSize:12,color:"var(--muted)" }}>{garments.length}/{MAX_GARMENTS} pieces</span>
+              </div>
+              <p style={{ fontSize:13,color:"var(--muted)",lineHeight:1.6,fontWeight:300,marginBottom:16 }}>Add one piece or build a full outfit — a top, bottoms, shoes and a jacket get layered on you together. Each piece uses 1 credit; set the right type under each.</p>
+
+              {garments.length === 0 ? (
+                /* Empty state — one clean, full-width drop zone */
+                <div
+                  className={`upload-zone${drag?" drag":""}`}
+                  style={{ minHeight:280,position:"relative",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:22,cursor:"pointer" }}
+                  onClick={()=>garmentRef.current?.click()}
+                  onDragOver={e=>{e.preventDefault();setDrag(true);}}
+                  onDragLeave={()=>setDrag(false)}
+                  onDrop={e=>{e.preventDefault();setDrag(false);const f=e.dataTransfer.files[0];if(f)onGarment(f);}}
+                >
                   <div style={{ textAlign:"center",padding:28,pointerEvents:"none",color:"var(--muted)" }}>
                     <div className="up-float" style={{ display:"inline-flex",color:"var(--faint)",marginBottom:14 }}><IconUpload size={34}/></div>
                     <p style={{ fontSize:15,color:"var(--ink)",fontWeight:500,marginBottom:6 }}>Drop a garment photo</p>
-                    <p style={{ fontSize:13,color:"var(--muted)",lineHeight:1.6,fontWeight:300 }}>Any item from any store — paste a screenshot or product image.<br/><span style={{ fontSize:11,color:"var(--faint)" }}>JPG · PNG · WebP · max 10MB</span></p>
+                    <p style={{ fontSize:13,color:"var(--muted)",lineHeight:1.6,fontWeight:300 }}>Any item from any store — a screenshot or product image.<br/><span style={{ fontSize:11,color:"var(--faint)" }}>JPG · PNG · WebP · max 10MB</span></p>
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:12,marginBottom:22 }}>
+                  {garments.map((g,i) => (
+                    <div key={g.id} style={{ border:"1px solid var(--border)",borderRadius:12,overflow:"hidden",background:"var(--card)" }}>
+                      <div style={{ position:"relative",aspectRatio:"3/4",background:"#fff" }}>
+                        <img src={g.url} alt="" style={{ width:"100%",height:"100%",objectFit:"cover" }}/>
+                        <span style={{ position:"absolute",top:8,left:8,width:22,height:22,borderRadius:100,background:"var(--brand)",color:"#fff",fontSize:11,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center" }}>{i+1}</span>
+                        <button onClick={()=>removeGarment(g.id)} aria-label="Remove piece" disabled={loading} style={{ position:"absolute",top:8,right:8,width:24,height:24,borderRadius:100,background:"rgba(255,252,247,0.94)",border:"1px solid var(--border)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)",color:"var(--ink)",fontSize:15,lineHeight:1,padding:0 }}>×</button>
+                      </div>
+                      <div style={{ display:"flex",gap:4,padding:6 }}>
+                        {(["tops","bottoms","one-pieces"] as Category[]).map(c => (
+                          <button key={c} onClick={()=>setGarmentCat(g.id,c)} disabled={loading} style={{
+                            flex:1,padding:"5px 0",borderRadius:6,fontSize:10.5,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",
+                            background: g.cat===c ? "var(--brand)":"transparent",
+                            color:      g.cat===c ? "#fff":"var(--muted)",
+                            border:     g.cat===c ? "1px solid var(--brand)":"1px solid var(--border)",
+                          }}>{c==="one-pieces"?"Full":c==="tops"?"Top":"Bottom"}</button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {garments.length < MAX_GARMENTS && (
+                    <div
+                      className={`upload-zone${drag?" drag":""}`}
+                      style={{ aspectRatio:"3/4",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}
+                      onClick={()=>garmentRef.current?.click()}
+                      onDragOver={e=>{e.preventDefault();setDrag(true);}}
+                      onDragLeave={()=>setDrag(false)}
+                      onDrop={e=>{e.preventDefault();setDrag(false);const f=e.dataTransfer.files[0];if(f)onGarment(f);}}
+                    >
+                      <div style={{ textAlign:"center",padding:14,pointerEvents:"none",color:"var(--muted)" }}>
+                        <div className="up-float" style={{ display:"inline-flex",color:"var(--faint)",marginBottom:8 }}><IconUpload size={24}/></div>
+                        <p style={{ fontSize:13,color:"var(--ink)",fontWeight:500 }}>Add another</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* …or paste a product link */}
               <div style={{ marginBottom:26 }}>
@@ -329,29 +406,12 @@ export default function TryOnApp() {
                     onChange={e=>setLinkUrl(e.target.value)}
                     onKeyDown={e=>{ if(e.key==="Enter") useLink(); }}
                     placeholder="https://… store page or image URL"
-                    disabled={linkBusy}
+                    disabled={linkBusy || garments.length>=MAX_GARMENTS}
                   />
-                  <button className="btn-dark" onClick={useLink} disabled={linkBusy || !linkUrl.trim()} style={{ padding:"0 18px",borderRadius:8,display:"flex",alignItems:"center",gap:7,fontSize:14 }}>
+                  <button className="btn-dark" onClick={() => useLink()} disabled={linkBusy || !linkUrl.trim() || garments.length>=MAX_GARMENTS} style={{ padding:"0 18px",borderRadius:8,display:"flex",alignItems:"center",gap:7,fontSize:14 }}>
                     {linkBusy ? <div className="spinner" style={{ width:16,height:16 }}/> : <IconLinkChain size={16}/>}
-                    Use
+                    Add
                   </button>
-                </div>
-              </div>
-
-              {/* Category */}
-              <div style={{ marginBottom:26 }}>
-                <p style={{ fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--faint)",marginBottom:10,fontWeight:500 }}>Category</p>
-                <div style={{ display:"flex",gap:8 }}>
-                  {(["tops","bottoms","one-pieces"] as Category[]).map(c => (
-                    <button key={c} className="chip" onClick={()=>setCat(c)} style={{
-                      padding:"9px 18px",borderRadius:100,fontSize:13,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",textTransform:"capitalize",
-                      background: cat===c ? "var(--ink)" : "var(--card)",
-                      color:      cat===c ? "#fff" : "var(--muted)",
-                      border:     cat===c ? "1px solid var(--ink)" : "1px solid var(--border)",
-                      fontWeight: cat===c ? 500 : 400,
-                      boxShadow:  cat===c ? "0 6px 16px rgba(26,22,17,0.18)" : "none",
-                    }}>{c}</button>
-                  ))}
                 </div>
               </div>
 
@@ -368,14 +428,18 @@ export default function TryOnApp() {
                   Out of credits — upgrade to Pro <IconArrowRight size={16}/>
                 </a>
               ) : (
-                <button className={`btn-dark${garment&&!loading?" btn-ready":""}`} onClick={generate} disabled={!garment||loading}
+                <button className={`btn-dark${garments.length>0&&!loading?" btn-ready":""}`} onClick={generate} disabled={garments.length===0||loading}
                   style={{ width:"100%",padding:"16px",fontSize:15,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:10 }}>
                   {loading
-                    ? <><div className="spinner" style={{ width:18,height:18 }}/>Generating your look…</>
-                    : <><IconSpark size={18}/> Try it on · 1 credit</>}
+                    ? <><div className="spinner" style={{ width:18,height:18 }}/>{garments.length>1?`Layering ${garments.length} pieces…`:"Generating your look…"}</>
+                    : <><IconSpark size={18}/> {garments.length<=1?"Try it on · 1 credit":`Try on ${garments.length} pieces · ${garments.length} credits`}</>}
                 </button>
               )}
-              <p style={{ textAlign:"center",fontSize:12,color:"var(--faint)",marginTop:12 }}>Result in ~15 seconds · uses 1 credit</p>
+              <p style={{ textAlign:"center",fontSize:12,color:"var(--faint)",marginTop:12 }}>
+                {garments.length>1
+                  ? `~${garments.length*12}s · uses ${garments.length} credits (1 per piece)`
+                  : "Result in ~15 seconds · uses 1 credit"}
+              </p>
             </>
           ) : (
             /* No saved photo yet */
@@ -488,9 +552,9 @@ export default function TryOnApp() {
                   </div>
                 </div>
 
-                <button onClick={()=>{ setResult(null); setGarment(null); setError(null); }} className="btn-outline"
+                <button onClick={()=>{ setResult(null); setGarments([]); setError(null); }} className="btn-outline"
                   style={{ width:"100%",padding:"13px",fontSize:14,marginTop:20,borderRadius:8 }}>
-                  Try another garment
+                  Start a new look
                 </button>
               </div>
             )}

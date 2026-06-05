@@ -134,9 +134,9 @@ export default function Onboarding() {
                   <button key={g.v} onClick={()=>setGender(g.v)} style={{
                     flex:1,padding:"11px 0",borderRadius:6,fontSize:13,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",
                     transition:"all .15s",
-                    background: gender===g.v ? "var(--ink)" : "#fff",
+                    background: gender===g.v ? "var(--brand)" : "#fff",
                     color:      gender===g.v ? "#fff" : "var(--muted)",
-                    border:     gender===g.v ? "1px solid var(--ink)" : "1px solid var(--border)",
+                    border:     gender===g.v ? "1px solid var(--brand)" : "1px solid var(--border)",
                     fontWeight: gender===g.v ? 500 : 400,
                   }}>{g.label}</button>
                 ))}

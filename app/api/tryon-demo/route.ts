@@ -3,7 +3,10 @@ import { rateLimit } from "@/lib/rate-limit";
 import { runTryOnFromBuffers } from "@/lib/google-tryon";
 import { getStyleAdvice } from "@/lib/gemini-stylist";
 
-export const maxDuration = 60;
+// Up to 4 garments are layered sequentially (~12s each) — allow a generous budget.
+export const maxDuration = 120;
+
+const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") || "unknown";
@@ -19,35 +22,46 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
   }
 
-  const modelImage   = formData.get("modelImage")   as File | null;
-  const garmentImage = formData.get("garmentImage") as File | null;
+  const modelImage = formData.get("modelImage") as File | null;
+  // Accept one OR many garments (layered in order). getAll preserves append order.
+  const garments = formData.getAll("garmentImage").filter((g): g is File => g instanceof File);
   const heightCm = formData.get("heightCm") ? Number(formData.get("heightCm")) : null;
   const weightKg = formData.get("weightKg") ? Number(formData.get("weightKg")) : null;
   const gender   = (formData.get("gender") as string | null) || "";
 
-  if (!modelImage || !garmentImage) {
-    return NextResponse.json({ error: "Both images are required" }, { status: 400 });
+  if (!modelImage || garments.length === 0) {
+    return NextResponse.json({ error: "A photo and at least one garment are required" }, { status: 400 });
   }
-
-  const allowed = ["image/jpeg", "image/png", "image/webp"];
-  if (!allowed.includes(modelImage.type) || !allowed.includes(garmentImage.type)) {
+  if (garments.length > 4) {
+    return NextResponse.json({ error: "Up to 4 garments at a time" }, { status: 400 });
+  }
+  if (!ALLOWED.includes(modelImage.type) || garments.some((g) => !ALLOWED.includes(g.type))) {
     return NextResponse.json({ error: "Only JPEG, PNG or WebP allowed" }, { status: 400 });
   }
-  if (modelImage.size > 10_000_000 || garmentImage.size > 10_000_000) {
+  if (modelImage.size > 10_000_000 || garments.some((g) => g.size > 10_000_000)) {
     return NextResponse.json({ error: "Images must be under 10MB" }, { status: 400 });
   }
 
   try {
-    const personBuffer  = Buffer.from(await modelImage.arrayBuffer());
-    const garmentBuffer = Buffer.from(await garmentImage.arrayBuffer());
+    // Chain: each garment is applied onto the running result (the person wearing
+    // everything so far), so the final image has all pieces layered together.
+    let personBuffer = Buffer.from(await modelImage.arrayBuffer());
+    let personMime   = modelImage.type;
+    let resultDataUrl = "";
 
-    // Step 1 — Google Virtual Try-On
-    const resultDataUrl = await runTryOnFromBuffers(
-      personBuffer,  modelImage.type,
-      garmentBuffer, garmentImage.type
-    );
+    for (const garment of garments) {
+      const garmentBuffer = Buffer.from(await garment.arrayBuffer());
+      resultDataUrl = await runTryOnFromBuffers(
+        personBuffer, personMime,
+        garmentBuffer, garment.type
+      );
+      // feed this result back in as the person for the next garment
+      const b64 = resultDataUrl.split(",")[1] || "";
+      personBuffer = Buffer.from(b64, "base64");
+      personMime   = "image/png";
+    }
 
-    // Step 2 — Gemini style advice (personalized to the user's body)
+    // Gemini style advice on the final, fully-dressed look
     const styleAdvice = await getStyleAdvice(resultDataUrl, {
       heightCm,
       weightKg,
@@ -57,6 +71,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       resultImageUrl: resultDataUrl,
       styleAdvice,
+      garmentCount: garments.length,
       remaining: 9,
     });
   } catch (err) {

@@ -336,7 +336,7 @@ button, input, textarea, select, optgroup { font-family: inherit; }
 .btn-dark {
   position: relative;
   overflow: hidden;
-  background: var(--ink);
+  background: var(--brand);
   color: #fff;
   border: 1px solid transparent;
   border-radius: var(--r-sm);
@@ -359,7 +359,7 @@ button, input, textarea, select, optgroup { font-family: inherit; }
   transition: transform 0.7s ease;
   pointer-events: none;
 }
-.btn-dark:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(26,22,17,0.22); }
+.btn-dark:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(47,76,110,0.30); }
 .btn-dark:hover::after { transform: translateX(130%) skewX(-15deg); }
 .btn-dark:active { transform: translateY(0) scale(0.98); }
 .btn-dark:disabled { opacity: 0.25; cursor: not-allowed; transform: none; box-shadow: none; }
@@ -1403,8 +1403,8 @@ button, input, textarea, select, optgroup { font-family: inherit; }
 
 /* Ready-to-generate pulse on the button */
 @keyframes readyPulse {
-  0%,100% { box-shadow: 0 0 0 0 rgba(26,22,17,0.0); }
-  50%     { box-shadow: 0 0 0 7px rgba(26,22,17,0.06); }
+  0%,100% { box-shadow: 0 0 0 0 rgba(47,76,110,0.0); }
+  50%     { box-shadow: 0 0 0 7px rgba(47,76,110,0.10); }
 }
 .btn-ready { animation: readyPulse 2.2s ease-in-out infinite; }
 
