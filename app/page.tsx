@@ -265,8 +265,8 @@ const HOW_STEPS = [
     short: "Your photo",
     title: "Upload your photo",
     body: "A single full-length photo of yourself. The AI reads your proportions automatically — no measurements, no fuss. You set this up once.",
-    img: "/images/step-1-photo.jpg",
-    pos: "70% 30%",
+    img: "/images/step-1-phone.jpg",
+    pos: "center top",
     caption: "Your fit profile",
   },
   {
@@ -274,8 +274,8 @@ const HOW_STEPS = [
     short: "The garment",
     title: "Add any garment",
     body: "Any clothing image from any store — Zara, ASOS, Nike, a screenshot from Instagram. Paste it in. No restrictions, no catalog.",
-    img: "/images/step-2-garment.jpg",
-    pos: "center 48%",
+    img: "/images/step-2-phone.jpg",
+    pos: "center top",
     caption: "Any store, any item",
   },
   {
@@ -283,8 +283,8 @@ const HOW_STEPS = [
     short: "See the look",
     title: "See yourself in it",
     body: "A photorealistic result in under 15 seconds — on your body, not a model's — with an honest AI verdict: buy, skip, or maybe.",
-    img: "/images/step-3-result.jpg",
-    pos: "center 28%",
+    img: "/images/step-3-phone.jpg",
+    pos: "center top",
     caption: "Photoreal in ~15s",
   },
 ];
@@ -338,8 +338,10 @@ function HowItWorks() {
           onMouseLeave={() => setPaused(false)}
         >
           <div className="how-media">
-            <img key={active} src={s.img} alt={s.title} className="how-img" style={{ objectPosition: s.pos }} />
-            <span key={`cap${active}`} className="how-caption">{s.caption}</span>
+            <div className="how-screen">
+              <img key={active} src={s.img} alt={s.title} className="how-img" style={{ objectPosition: s.pos }} />
+            </div>
+            <span className="how-island" aria-hidden="true" />
           </div>
           <div className="how-copy">
             <div key={active} className="how-copy-in">
