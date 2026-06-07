@@ -610,18 +610,21 @@ export default function Landing() {
       {/* ── SPLIT DEMO ── */}
       <section className="sec-demo">
         <div className="sec-inner">
-          <div className="reveal reveal-up" style={{ background: "var(--card)", borderRadius: 16, overflow: "hidden", border: "1px solid var(--border)" }}>
-            <video
-              className="demo-video"
-              src="https://res.cloudinary.com/dbqafbjoi/video/upload/q_auto,w_1920/v1780834276/demo_uqh3ku.mp4"
-              poster="/images/hero-bg.jpg"
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
-              style={{ width: "100%", height: "auto", display: "block" }}
-            />
+          <div className="macbook reveal reveal-up">
+            <div className="macbook-screen">
+              <span className="macbook-notch" />
+              <video
+                className="demo-video"
+                src="https://res.cloudinary.com/dbqafbjoi/video/upload/q_auto,w_1920/v1780834276/demo_uqh3ku.mp4"
+                poster="/images/hero-bg.jpg"
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+              />
+            </div>
+            <div className="macbook-base" />
           </div>
         </div>
       </section>
