@@ -607,9 +607,6 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* ── HOW IT WORKS ── */}
-      <HowItWorks />
-
       {/* ── SPLIT DEMO ── */}
       <section className="sec-demo">
         <div className="sec-inner">
@@ -643,42 +640,25 @@ export default function Landing() {
             {/* Visual side */}
             <div className="reveal reveal-right">
               <div style={{ background: "var(--card)", borderRadius: 16, overflow: "hidden", border: "1px solid var(--border)" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1px", background: "var(--border)" }}>
-                  {[
-                    { label: "YOUR PHOTO", bg: "#EAE9E5" },
-                    { label: "GARMENT",    bg: "#E2E1DC" },
-                  ].map(c => (
-                    <div
-                      key={c.label}
-                      style={{
-                        background: c.bg,
-                        padding: "28px 24px",
-                        aspectRatio: "3/4",
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <p style={{ fontSize: 10, letterSpacing: "0.12em", color: "rgba(26,22,17,0.3)", fontWeight: 500 }}>{c.label}</p>
-                      <div style={{ textAlign: "center" }}>
-                        <div style={{ width: 40, height: 40, borderRadius: "50%", background: "rgba(26,22,17,0.07)", margin: "0 auto" }} />
-                      </div>
-                      <div />
-                    </div>
-                  ))}
-                </div>
-                <div style={{ padding: "20px 24px", background: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div>
-                    <div className="tag tag-green" style={{ marginBottom: 7 }}>Buy it</div>
-                    <p style={{ fontSize: 13, color: "var(--muted)", fontWeight: 300 }}>Great fit — shoulders sit perfectly</p>
-                  </div>
-                  <div className="serif" style={{ fontSize: 28, color: "rgba(26,22,17,0.12)", letterSpacing: "-0.02em", fontWeight: 300 }}>9/10</div>
-                </div>
+                <video
+                  className="demo-video"
+                  src="https://res.cloudinary.com/dbqafbjoi/video/upload/q_auto,w_1280/v1780834276/demo_uqh3ku.mp4"
+                  poster="/images/hero-bg.jpg"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="auto"
+                  style={{ width: "100%", height: "auto", display: "block" }}
+                />
               </div>
             </div>
           </div>
         </div>
       </section>
+
+      {/* ── HOW IT WORKS ── */}
+      <HowItWorks />
 
       {/* ── TESTIMONIALS ── */}
       <Testimonials />
