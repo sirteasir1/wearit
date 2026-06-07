@@ -817,6 +817,7 @@ export default function Landing() {
 
       {/* ── FOOTER ── */}
       <footer className="site-footer">
+        <div className="footer-watermark" aria-hidden="true" />
         <div className="footer-inner">
 
           {/* Top row: brand + CTA */}
