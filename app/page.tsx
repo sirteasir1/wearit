@@ -356,6 +356,8 @@ function HowItWorks() {
             </div>
           </div>
         </div>
+
+        <img className="how-illo" src="/images/wolf-relax.png" alt="" aria-hidden="true" />
       </div>
     </section>
   );
@@ -780,6 +782,7 @@ export default function Landing() {
 
       {/* ── BIG CTA ── */}
       <section className="sec-cta">
+        <img className="cta-illo" src="/images/wolf-struggle.png" alt="" aria-hidden="true" />
 
         <div className="reveal">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 34 }}>
