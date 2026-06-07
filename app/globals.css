@@ -30,11 +30,31 @@
 html { scroll-behavior: smooth; }
 body {
   font-family: 'Hanken Grotesk', -apple-system, sans-serif;
-  background: var(--bg);
+  background-color: var(--bg);
+  /* ambient depth — soft gold + steel-navy light pools anchored to the viewport */
+  background-image:
+    radial-gradient(1100px 760px at 6% -8%,  rgba(176,138,62,0.12), transparent 58%),
+    radial-gradient(1000px 720px at 99% 5%,  rgba(47,76,110,0.09),  transparent 55%),
+    radial-gradient(1300px 1000px at 50% 118%, rgba(176,138,62,0.08), transparent 60%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   color: var(--ink);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* film-grain paper texture across the whole page — the "expensive" tactile layer */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: none;
+  opacity: 0.42;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
 }
 /* "serif" class name kept for compatibility — now a bold display grotesque */
 .serif { font-family: 'Bricolage Grotesque', 'Hanken Grotesk', sans-serif; font-optical-sizing: auto; }
@@ -879,7 +899,7 @@ button, input, textarea, select, optgroup { font-family: inherit; }
 /* ── TESTIMONIALS SPOTLIGHT ── */
 .sec-testimonials {
   padding: 130px 24px;
-  background: var(--bg);
+  background: transparent;
   overflow: hidden;
   position: relative;
 }
@@ -1059,7 +1079,7 @@ button, input, textarea, select, optgroup { font-family: inherit; }
 /* ── SECTION PADDING ── */
 .sec-how      { padding: 140px 64px 100px; }
 .sec-demo     { padding: 60px 64px 140px; }
-.sec-features { padding: 100px 64px 120px; background: var(--bg); }
+.sec-features { padding: 100px 64px 120px; background: linear-gradient(180deg, transparent 0%, rgba(236,225,205,0.55) 13%, rgba(236,225,205,0.55) 87%, transparent 100%); }
 .sec-stats    { padding: 100px 64px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .sec-pricing  { padding: 120px 64px; }
 .sec-cta {
@@ -1167,7 +1187,7 @@ button, input, textarea, select, optgroup { font-family: inherit; }
 
 /* ── FOOTER ── */
 /* ── FAQ ── */
-.sec-faq { padding: 130px 64px; background: var(--bg); border-top: 1px solid var(--border); }
+.sec-faq { padding: 130px 64px; background: linear-gradient(180deg, rgba(242,233,217,0.6) 0%, transparent 65%); border-top: 1px solid var(--border); }
 .faq-grid { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 72px; align-items: start; }
 .faq-head { position: sticky; top: 110px; }
 
