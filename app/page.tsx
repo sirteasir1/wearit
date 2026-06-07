@@ -594,13 +594,10 @@ export default function Landing() {
       </div>
 
       {/* ── BRAND TICKER ── */}
-      <div style={{ overflow: "hidden", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "26px 0", background: "var(--bg)" }}>
-        <p style={{ textAlign: "center", fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 18, fontWeight: 600 }}>
-          Works with any store
-        </p>
+      <div style={{ overflow: "hidden", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "18px 0", background: "var(--bg)" }}>
         <div className="ticker-track">
           {[...TICKER_ITEMS, ...TICKER_ITEMS].map((t, i) => (
-            <span key={i} className="serif" style={{ padding: "0 30px", fontSize: "clamp(22px,2.6vw,34px)", fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.01em", whiteSpace: "nowrap", opacity: 0.9 }}>
+            <span key={i} className="serif" style={{ padding: "0 22px", fontSize: "clamp(15px,1.7vw,22px)", fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.01em", whiteSpace: "nowrap", opacity: 0.55 }}>
               {t}
             </span>
           ))}
