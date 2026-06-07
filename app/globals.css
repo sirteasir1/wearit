@@ -1272,20 +1272,18 @@ button, input, textarea, select, optgroup { font-family: inherit; }
 .faq-item.open .faq-a p { opacity: 1; transform: translateY(0); transition-delay: 0.12s; }
 
 .site-footer { background: var(--dark); position: relative; overflow: hidden; }
-/* giant "Wearit" wordmark watermark — invert + screen so only the letters glow,
-   the paper background dissolves into the dark footer; sits behind the content */
+/* giant "Wearit" wordmark watermark — transparent PNG (white letters, no
+   background) so it blends seamlessly into the dark footer; behind content */
 .footer-watermark {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background-image: url("/images/wearit-wordmark.jpg");
+  background-image: url("/images/wearit-wordmark.png");
   background-size: 78% auto;
   background-position: center 50%;
   background-repeat: no-repeat;
-  filter: invert(1) contrast(1.08);
-  mix-blend-mode: screen;
-  opacity: 0.22;
+  opacity: 0.07;
 }
 .footer-inner { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; padding: 88px 64px 52px; }
 .footer-top {
