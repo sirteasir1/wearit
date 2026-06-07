@@ -610,49 +610,18 @@ export default function Landing() {
       {/* ── SPLIT DEMO ── */}
       <section className="sec-demo">
         <div className="sec-inner">
-          <div className="split-grid">
-            {/* Text side */}
-            <div className="reveal reveal-left">
-              <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 16, fontWeight: 500 }}>The result</p>
-              <h2 className="serif" style={{ fontSize: "clamp(32px,4.2vw,54px)", fontWeight: 500, letterSpacing: "-0.035em", lineHeight: 1.08, marginBottom: 22, color: "var(--ink)" }}>
-                See it on<br />
-                <em style={{ fontStyle: "italic" }}>your body</em>
-              </h2>
-              <p style={{ fontSize: 15, color: "var(--muted)", lineHeight: 1.85, marginBottom: 32, fontWeight: 300, maxWidth: 380 }}>
-                Not on a model with a different body type. Not on a mannequin. On you — photorealistic, in under 15 seconds.
-              </p>
-              <div style={{ borderTop: "1px solid var(--border)", paddingTop: 28, marginBottom: 32 }}>
-                <div style={{ display: "flex", gap: 32 }}>
-                  {[
-                    { label: "Fit accuracy", val: "97%" },
-                    { label: "Avg. generation", val: "12s" },
-                  ].map(m => (
-                    <div key={m.label}>
-                      <div className="serif" style={{ fontSize: 28, fontWeight: 300, color: "var(--ink)", letterSpacing: "-0.02em" }}>{m.val}</div>
-                      <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 3, letterSpacing: "0.02em" }}>{m.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <Link href="/signup" className="btn-dark" style={{ padding: "13px 32px", fontSize: 14 }}>Try it free</Link>
-            </div>
-
-            {/* Visual side */}
-            <div className="reveal reveal-right">
-              <div style={{ background: "var(--card)", borderRadius: 16, overflow: "hidden", border: "1px solid var(--border)" }}>
-                <video
-                  className="demo-video"
-                  src="https://res.cloudinary.com/dbqafbjoi/video/upload/q_auto,w_1280/v1780834276/demo_uqh3ku.mp4"
-                  poster="/images/hero-bg.jpg"
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  preload="auto"
-                  style={{ width: "100%", height: "auto", display: "block" }}
-                />
-              </div>
-            </div>
+          <div className="reveal reveal-up" style={{ background: "var(--card)", borderRadius: 16, overflow: "hidden", border: "1px solid var(--border)" }}>
+            <video
+              className="demo-video"
+              src="https://res.cloudinary.com/dbqafbjoi/video/upload/q_auto,w_1920/v1780834276/demo_uqh3ku.mp4"
+              poster="/images/hero-bg.jpg"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              style={{ width: "100%", height: "auto", display: "block" }}
+            />
           </div>
         </div>
       </section>
