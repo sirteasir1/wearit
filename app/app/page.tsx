@@ -17,7 +17,7 @@ function checkoutHref(uid: string | null, email: string | null): string {
   return "/#pricing";
 }
 import {
-  IconSpark, IconUpload, IconHeart, IconHeartFilled, IconShare,
+  IconSpark, IconUpload, IconCamera, IconHeart, IconHeartFilled, IconShare,
   IconLink, IconBulb, IconInstagram, IconCheck, IconArrowRight,
   IconTikTok, IconWhatsApp, IconDownload, IconLinkChain, IconScrub,
 } from "@/lib/icons";
@@ -117,6 +117,7 @@ export default function TryOnApp() {
   const [email, setEmail]     = useState<string | null>(null);
 
   const garmentRef = useRef<HTMLInputElement>(null);
+  const cameraRef  = useRef<HTMLInputElement>(null);
 
   /* The model photo + measurements + credits come from the saved profile */
   useEffect(() => onAuthStateChanged(auth, async (u) => {
@@ -322,7 +323,8 @@ export default function TryOnApp() {
 
           {photo ? (
             <>
-              <input ref={garmentRef} type="file" accept="image/*" style={{ display:"none" }} disabled={loading} onChange={e=>{const f=e.target.files?.[0];if(f)onGarment(f);}}/>
+              <input ref={garmentRef} type="file" accept="image/*" style={{ display:"none" }} disabled={loading} onChange={e=>{const f=e.target.files?.[0];if(f)onGarment(f);e.target.value="";}}/>
+              <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display:"none" }} disabled={loading} onChange={e=>{const f=e.target.files?.[0];if(f)onGarment(f);e.target.value="";}}/>
 
               {/* Model chip — saved profile photo */}
               <div style={{ display:"flex",alignItems:"center",gap:14,padding:"12px 14px",border:"1px solid var(--border)",borderRadius:12,background:"var(--card)",marginBottom:22 }}>
@@ -357,7 +359,20 @@ export default function TryOnApp() {
                     <p style={{ fontSize:13,color:"var(--muted)",lineHeight:1.6,fontWeight:300 }}>Any item from any store — a screenshot or product image.<br/><span style={{ fontSize:11,color:"var(--faint)" }}>JPG · PNG · WebP · max 10MB</span></p>
                   </div>
                 </div>
-              ) : (
+              ) : null}
+
+              {garments.length === 0 && (
+                /* Snap a garment with the camera — fastest path on mobile */
+                <button
+                  onClick={()=>cameraRef.current?.click()}
+                  disabled={loading}
+                  style={{ width:"100%",marginBottom:22,marginTop:-6,padding:"14px",borderRadius:10,border:"1px solid var(--border)",background:"var(--card)",color:"var(--ink)",fontSize:14,fontWeight:500,fontFamily:"'Hanken Grotesk',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9 }}
+                >
+                  <IconCamera size={18}/> Snap it with your camera
+                </button>
+              )}
+
+              {garments.length > 0 && (
                 <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:12,marginBottom:22 }}>
                   {garments.map((g,i) => (
                     <div key={g.id} style={{ border:"1px solid var(--border)",borderRadius:12,overflow:"hidden",background:"var(--card)" }}>
