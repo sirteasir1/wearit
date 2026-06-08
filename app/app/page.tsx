@@ -460,6 +460,14 @@ export default function TryOnApp() {
         {loading && !result && (
           <div className="anim-up" style={{ display:"flex",flexDirection:"column" }}>
             <div className="gen-skel">
+              <video
+                className="gen-video"
+                src="https://res.cloudinary.com/dbqafbjoi/video/upload/q_auto/v1780893333/%D0%92%D0%BE%D0%BB%D0%BA_%D1%89%D0%B5%D0%BB%D0%BA%D0%B0%D0%B5%D1%82_%D0%BF%D0%B0%D0%BB%D1%8C%D1%86%D0%B0%D0%BC%D0%B8_%D0%BC%D0%B5%D0%BD%D1%8F%D0%B5%D1%82_%D0%BE%D0%B4%D0%B5%D0%B6%D0%B4%D1%83_202606080921_wlf04m.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
               <div className="gen-status">
                 <div className="gen-ring" />
                 <div key={phase} className="gen-status-text" style={{ fontSize:14,fontWeight:500,color:"var(--ink)",letterSpacing:"0.01em" }}>{phase}…</div>
