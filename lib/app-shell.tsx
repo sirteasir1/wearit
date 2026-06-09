@@ -5,11 +5,12 @@ import { ReactNode, useEffect, useState } from "react";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { getProfile, pullRemote } from "@/lib/store";
-import { IconSpark, IconHanger, IconUser, IconSignOut, IconPanel, IconWand } from "@/lib/icons";
+import { IconSpark, IconHanger, IconUser, IconSignOut, IconPanel, IconWand, IconBattle } from "@/lib/icons";
 
 const NAV = [
   { href: "/app",      Icon: IconSpark,  label: "Try on"   },
   { href: "/agent",    Icon: IconWand,   label: "Stylist"  },
+  { href: "/battle",   Icon: IconBattle, label: "Battle"   },
   { href: "/wardrobe", Icon: IconHanger, label: "Wardrobe" },
   { href: "/profile",  Icon: IconUser,   label: "Profile"  },
 ];

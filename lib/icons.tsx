@@ -77,6 +77,15 @@ export const IconUpload = ({ size = 18, style, strokeWidth = 1.5 }: P) => (
   </svg>
 );
 
+/* Battle — two looks facing off */
+export const IconBattle = ({ size = 18, style, strokeWidth = 1.5 }: P) => (
+  <svg {...base(size)} style={style}>
+    <rect x="3" y="5" width="7" height="14" rx="1.6" stroke="currentColor" strokeWidth={strokeWidth} />
+    <rect x="14" y="5" width="7" height="14" rx="1.6" stroke="currentColor" strokeWidth={strokeWidth} />
+    <path d="M12 4v16" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeDasharray="1 2.4" />
+  </svg>
+);
+
 /* Copy link */
 export const IconLink = ({ size = 18, style, strokeWidth = 1.5 }: P) => (
   <svg {...base(size)} style={style}>
