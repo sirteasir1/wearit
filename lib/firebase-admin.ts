@@ -5,12 +5,40 @@ import { getStorage } from "firebase-admin/storage";
 
 let adminApp: App;
 
+/* Pasting the service-account JSON into a hosting env (Vercel etc.) often
+   turns the escaped "\n" inside private_key into raw newlines, which makes
+   the value invalid JSON ("Bad control character in string literal").
+   Parse leniently: escape control chars that sit *inside* string literals. */
+function parseServiceAccount(raw: string): Record<string, string> {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    let out = "";
+    let inStr = false;
+    for (let i = 0; i < raw.length; i++) {
+      const ch = raw[i];
+      if (ch === '"' && raw[i - 1] !== "\\") inStr = !inStr;
+      if (inStr) {
+        if (ch === "\n") { out += "\\n"; continue; }
+        if (ch === "\r") { out += "\\r"; continue; }
+        if (ch === "\t") { out += "\\t"; continue; }
+      }
+      out += ch;
+    }
+    return JSON.parse(out);
+  }
+}
+
 function adminCredential() {
   // Easiest: paste the whole Firebase service-account JSON in one var.
   const raw = process.env.FIREBASE_ADMIN_KEY;
   if (raw) {
-    const j = JSON.parse(raw);
-    return cert({ projectId: j.project_id, clientEmail: j.client_email, privateKey: j.private_key });
+    const j = parseServiceAccount(raw);
+    return cert({
+      projectId: j.project_id,
+      clientEmail: j.client_email,
+      privateKey: j.private_key?.replace(/\\n/g, "\n"),
+    });
   }
   // Or the three separate fields.
   return cert({
