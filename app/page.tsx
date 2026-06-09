@@ -772,11 +772,6 @@ export default function Landing() {
                 <Link href="/signup" className="btn-pro" onClick={(e) => e.stopPropagation()}>
                   Start free trial
                 </Link>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowPro(true); }}
-                  style={{ width: "100%", marginTop: 14, background: "none", border: "none", color: "rgba(255,255,255,0.55)", fontSize: 13, cursor: "pointer", fontFamily: "'Hanken Grotesk',sans-serif", textDecoration: "underline", textUnderlineOffset: 3 }}>
-                  See everything in Pro
-                </button>
               </div>
               </div>
             </div>
