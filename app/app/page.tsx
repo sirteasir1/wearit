@@ -169,7 +169,7 @@ export default function TryOnApp() {
         const r = await fetch("/api/detect-garments", { method: "POST", body: fd });
         if (!r.ok) return;
         const d = await r.json();
-        if (d.multiple) toast("Looks like several items in one photo — add each piece separately for a cleaner try-on, and set its type below.", "error");
+        if (d.multiple) toast("Looks like several items in one photo — add each piece separately for a cleaner try-on, and set its type below.", "default", 5200);
       } catch { /* detection is best-effort */ }
     })();
   }, []);

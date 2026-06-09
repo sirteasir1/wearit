@@ -10,14 +10,6 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
-    // Battle option images — publicly readable so anyone with the link can
-    // vote without an account. Writes happen server-side via the Admin SDK
-    // (which bypasses these rules), so direct client writes stay blocked.
-    match /battles/{allPaths=**} {
-      allow read:  if true;
-      allow write: if false;
-    }
-
     // Block everything else
     match /{allPaths=**} {
       allow read, write: if false;

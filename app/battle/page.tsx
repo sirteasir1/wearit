@@ -27,7 +27,6 @@ function leader(b: Battle): { name: string; pct: number } | null {
 }
 
 export default function BattlePage() {
-  const [uid, setUid]         = useState<string | null>(null);
   const [looks, setLooks]     = useState<WardrobeItem[]>([]);
   const [picked, setPicked]   = useState<string[]>([]);
   const [question, setQuestion] = useState("");
@@ -43,7 +42,6 @@ export default function BattlePage() {
 
   useEffect(() => onAuthStateChanged(auth, (u) => {
     if (!u) return;
-    setUid(u.uid);
     setLooks(getWardrobe(u.uid));
     loadMine();
   }), [loadMine]);

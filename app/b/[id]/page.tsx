@@ -10,41 +10,35 @@ import { IconBattle, IconArrowRight, IconCheck } from "@/lib/icons";
 
 export default function VotePage() {
   const { id } = useParams<{ id: string }>();
-  const [device, setDevice]   = useState("");
+  // Stable per-browser id, computed once (no setState-in-effect). It isn't
+  // rendered, so the server "" vs client value difference is invisible.
+  const [device] = useState<string>(() => deviceId());
   const [battle, setBattle]   = useState<BattlePublic | null>(null);
   const [error, setError]     = useState<string | null>(null);
   const [pick, setPick]       = useState<string | null>(null);   // tentative selection
   const [reaction, setReaction] = useState<Reaction | null>(null);
   const [busy, setBusy]       = useState(false);
 
-  const load = useCallback(async (dev: string) => {
-    try { setBattle(await fetchBattle(id, dev)); }
-    catch (e) { setError(e instanceof Error ? e.message : "Not found"); }
-  }, [id]);
+  // Light refreshes (no image bytes) merge new counts into the cached options.
+  const load = useCallback(async (light = false) => {
+    try {
+      const fresh = await fetchBattle(id, device, light);
+      setBattle((prev) => light && prev
+        ? { ...fresh, options: fresh.options.map((o) => ({ ...o, imageUrl: prev.options.find((p) => p.id === o.id)?.imageUrl || o.imageUrl })) }
+        : fresh);
+    } catch (e) { setError(e instanceof Error ? e.message : "Not found"); }
+  }, [id, device]);
 
-  useEffect(() => {
-    const dev = deviceId();
-    setDevice(dev);
-    load(dev);
-  }, [load]);
+  useEffect(() => { if (device) load(); }, [device, load]);
 
-  // Once the viewer has voted (or it's closed), keep results fresh. Poll in
-  // "light" mode (no image bytes) and merge counts into the cached options.
+  // Once the viewer has voted (or it's closed), keep results fresh.
   const voted = !!battle?.myVote;
   useEffect(() => {
     if (!device || !battle) return;
     if (!voted && !battle.closed) return;
-    const t = setInterval(async () => {
-      try {
-        const fresh = await fetchBattle(id, device, true);
-        setBattle((prev) => prev ? {
-          ...fresh,
-          options: fresh.options.map((o) => ({ ...o, imageUrl: prev.options.find((p) => p.id === o.id)?.imageUrl || o.imageUrl })),
-        } : fresh);
-      } catch { /* keep showing what we have */ }
-    }, 5000);
+    const t = setInterval(() => load(true), 5000);
     return () => clearInterval(t);
-  }, [device, battle, voted, id]);
+  }, [device, battle, voted, load]);
 
   const submit = async () => {
     if (!pick || busy) return;
@@ -78,7 +72,7 @@ export default function VotePage() {
           <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 22, fontWeight: 300 }}>{total} vote{total === 1 ? "" : "s"} so far</p>
         ) : (
           <p className="bt-tap" style={{ fontSize: 14.5, color: "var(--brand)", marginBottom: 22, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 7 }}>
-            👆 Tap the look you'd pick
+            👆 Tap the look you’d pick
           </p>
         )}
 

@@ -79,7 +79,7 @@ export async function createBattle(
     body: JSON.stringify(payload),
   });
   const d = await r.json();
-  if (!r.ok) throw new Error(d.reason ? `${d.error}: ${d.reason}` : (d.error || "Failed to create battle"));
+  if (!r.ok) throw new Error(d.error || "Failed to create battle");
   return d;
 }
 

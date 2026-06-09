@@ -1,7 +1,6 @@
 import { initializeApp, getApps, cert, App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import { getStorage } from "firebase-admin/storage";
 
 let adminApp: App;
 
@@ -74,11 +73,3 @@ function getAdminApp() {
 
 export const adminAuth = () => getAuth(getAdminApp());
 export const adminDb = () => getFirestore(getAdminApp());
-
-/* Default Storage bucket. Reuses the public client bucket name. */
-export const adminBucket = () => {
-  const name =
-    process.env.FIREBASE_STORAGE_BUCKET ||
-    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-  return getStorage(getAdminApp()).bucket(name);
-};
