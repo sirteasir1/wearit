@@ -17,8 +17,14 @@ export async function verifyAuth(request: NextRequest): Promise<{ uid: string } 
   try {
     const decoded = await adminAuth().verifyIdToken(token);
     return { uid: decoded.uid };
-  } catch {
-    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+  } catch (e) {
+    // Surface the real reason — expired token, project/aud mismatch, or a
+    // broken Admin credential (e.g. FIREBASE_ADMIN_KEY mangled in the env).
+    const code = (e as { code?: string; errorInfo?: { code?: string } })?.errorInfo?.code
+      || (e as { code?: string })?.code
+      || (e instanceof Error ? e.message : "unknown");
+    console.error("[auth] verifyIdToken failed:", code, e);
+    return NextResponse.json({ error: "Invalid token", reason: code }, { status: 401 });
   }
 }
 
