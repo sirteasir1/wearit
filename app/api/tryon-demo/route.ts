@@ -23,8 +23,21 @@ export async function POST(request: NextRequest) {
   }
 
   const modelImage = formData.get("modelImage") as File | null;
-  // Accept one OR many garments (layered in order). getAll preserves append order.
-  const garments = formData.getAll("garmentImage").filter((g): g is File => g instanceof File);
+  // Accept one OR many garments. getAll preserves append order, and the
+  // matching category list is appended in lockstep on the client.
+  const garmentFiles = formData.getAll("garmentImage").filter((g): g is File => g instanceof File);
+  const categories = formData.getAll("category").map(String);
+
+  // Layer in a sensible order regardless of add order: bottoms → tops →
+  // one-pieces last (a dress/jumpsuit wins over conflicting separates).
+  // Google's try-on model infers the garment type itself, so category drives
+  // stacking order, not a type hint to the model.
+  const ORDER: Record<string, number> = { bottoms: 0, tops: 1, "one-pieces": 2 };
+  const garments = garmentFiles
+    .map((file, i) => ({ file, cat: categories[i] ?? "tops" }))
+    .sort((a, b) => (ORDER[a.cat] ?? 1) - (ORDER[b.cat] ?? 1))
+    .map((g) => g.file);
+
   const heightCm = formData.get("heightCm") ? Number(formData.get("heightCm")) : null;
   const weightKg = formData.get("weightKg") ? Number(formData.get("weightKg")) : null;
   const gender   = (formData.get("gender") as string | null) || "";

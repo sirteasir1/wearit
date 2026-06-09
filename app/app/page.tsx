@@ -162,6 +162,16 @@ export default function TryOnApp() {
       return [...prev, { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, file: f, url: URL.createObjectURL(f), cat: "tops" }];
     });
     setResult(null); setError(null); setSaved(false);
+    // Non-blocking: warn if the photo looks like several pieces in one shot.
+    void (async () => {
+      try {
+        const fd = new FormData(); fd.append("image", f);
+        const r = await fetch("/api/detect-garments", { method: "POST", body: fd });
+        if (!r.ok) return;
+        const d = await r.json();
+        if (d.multiple) toast("Looks like several items in one photo — add each piece separately for a cleaner try-on, and set its type below.", "error");
+      } catch { /* detection is best-effort */ }
+    })();
   }, []);
 
   const useLink = async (rawUrl?: string) => {
