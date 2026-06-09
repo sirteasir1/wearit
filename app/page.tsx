@@ -430,6 +430,7 @@ export default function Landing() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mouseX,   setMouseX]   = useState(0);
+  const [showPro,  setShowPro]  = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   useReveal();
 
@@ -745,7 +746,7 @@ export default function Landing() {
                 ))}
               </div>
 
-              <div className="card pro-card" style={{ padding: "48px 44px", background: "var(--ink)", borderColor: "transparent" }}>
+              <div className="card pro-card" onClick={() => setShowPro(true)} style={{ padding: "48px 44px", background: "var(--ink)", borderColor: "transparent", cursor: "pointer" }}>
               <div className="pro-content">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
                   <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: "0.12em", fontWeight: 500 }}>PRO</p>
@@ -768,9 +769,14 @@ export default function Landing() {
                     </div>
                   ))}
                 </div>
-                <Link href="/signup" className="btn-pro">
+                <Link href="/signup" className="btn-pro" onClick={(e) => e.stopPropagation()}>
                   Start free trial
                 </Link>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowPro(true); }}
+                  style={{ width: "100%", marginTop: 14, background: "none", border: "none", color: "rgba(255,255,255,0.55)", fontSize: 13, cursor: "pointer", fontFamily: "'Hanken Grotesk',sans-serif", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                  See everything in Pro
+                </button>
               </div>
               </div>
             </div>
@@ -889,6 +895,61 @@ export default function Landing() {
 
         </div>
       </footer>
+
+      {showPro && <LandingProModal onClose={() => setShowPro(false)} />}
+    </div>
+  );
+}
+
+/* Pro details — Free vs Pro breakdown, opened from the pricing card. */
+function LandingProModal({ onClose }: { onClose: () => void }) {
+  // [label, free, pro, highlighted = a real upgrade over free]
+  const ROWS: [string, string, string, boolean][] = [
+    ["Credits", "4 to start", "40 / month — 10×", true],
+    ["AI style verdict", "Yes", "Yes", false],
+    ["Wardrobe", "Up to 20 items", "Unlimited", true],
+    ["Outfit battles", "Yes", "Yes", false],
+    ["Share to socials", "Yes", "Yes", false],
+    ["Calendar styling", "—", "Plan looks by date", true],
+    ["AI shop-discovery agent", "—", "Finds pieces to buy", true],
+  ];
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(20,16,10,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", background: "var(--ink)", borderRadius: 18, padding: "30px 28px", position: "relative", boxShadow: "0 30px 80px rgba(0,0,0,0.45)" }}>
+        <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 16, right: 16, width: 30, height: 30, borderRadius: 100, border: "1px solid rgba(255,255,255,0.18)", background: "transparent", color: "rgba(255,255,255,0.7)", cursor: "pointer", fontSize: 17, lineHeight: 1, padding: 0 }}>×</button>
+
+        <p style={{ fontSize: 11, letterSpacing: "0.14em", color: "#FFD9A8", fontWeight: 600, marginBottom: 8 }}>WEARIT PRO</p>
+        <h2 className="serif" style={{ fontSize: 30, fontWeight: 600, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>Try on more, decide faster</h2>
+        <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", fontWeight: 300, marginBottom: 22 }}>
+          <span style={{ fontSize: 26, color: "#fff", fontWeight: 500 }}>$13.99</span> / month · cancel anytime
+        </p>
+
+        <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, overflow: "hidden", marginBottom: 22 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.9fr 1.1fr", padding: "10px 14px", fontSize: 11, letterSpacing: "0.06em", color: "rgba(255,255,255,0.4)", borderBottom: "1px solid rgba(255,255,255,0.1)", fontWeight: 600 }}>
+            <span></span><span>FREE</span><span style={{ color: "#FFD9A8" }}>PRO</span>
+          </div>
+          {ROWS.map(([label, free, pro, hot], i) => (
+            <div key={label} style={{ display: "grid", gridTemplateColumns: "1.3fr 0.9fr 1.1fr", alignItems: "center", padding: "11px 14px", borderBottom: i < ROWS.length - 1 ? "1px solid rgba(255,255,255,0.07)" : undefined, background: hot ? "rgba(176,138,62,0.08)" : undefined }}>
+              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: hot ? 500 : 400 }}>{label}</span>
+              <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.4)" }}>{free}</span>
+              <span style={{ fontSize: 12.5, color: hot ? "#FFD9A8" : "rgba(255,255,255,0.85)", fontWeight: hot ? 600 : 400, display: "flex", alignItems: "center", gap: 5 }}>
+                {hot && <IconCheck />}{pro}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <Link href="/signup" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#fff", color: "var(--ink)", borderRadius: 8, padding: "15px", fontSize: 15, fontWeight: 600, textDecoration: "none" }}>
+          Start free trial
+        </Link>
+        <button onClick={onClose} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer", fontFamily: "'Hanken Grotesk',sans-serif" }}>
+          Maybe later
+        </button>
+      </div>
     </div>
   );
 }
