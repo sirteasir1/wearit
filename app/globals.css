@@ -1802,3 +1802,67 @@ button, input, textarea, select, optgroup { font-family: inherit; }
   .hero-stats    { flex-direction: row; gap: 28px; }
   .features-grid { grid-template-columns: 1fr; }
 }
+
+/* ─────────────────────────────────────────────
+   Outfit Battle — selectable cards & hints
+   ───────────────────────────────────────────── */
+.bt-card {
+  transition: transform .18s cubic-bezier(.22,1,.36,1), box-shadow .25s, border-color .2s;
+  will-change: transform;
+}
+.bt-card:not(.results):hover {
+  transform: translateY(-4px) scale(1.015);
+  box-shadow: 0 14px 34px rgba(26,22,17,.16);
+  border-color: var(--brand-ring);
+}
+.bt-card:not(.results):active { transform: translateY(-1px) scale(.99); }
+.bt-card.on {
+  box-shadow: 0 12px 30px var(--brand-ring);
+  transform: translateY(-3px);
+}
+
+/* gentle float for "tap" hint text */
+@keyframes btFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.bt-tap { animation: btFloat 1.8s ease-in-out infinite; }
+
+/* pulsing ring to invite a first tap (stops once you've picked) */
+@keyframes btRing {
+  0%   { box-shadow: 0 0 0 0 var(--brand-ring); }
+  70%  { box-shadow: 0 0 0 12px rgba(47,76,110,0); }
+  100% { box-shadow: 0 0 0 0 rgba(47,76,110,0); }
+}
+.bt-invite { animation: btRing 2.1s ease-out infinite; }
+
+/* translucent "Tap to pick" pill over a card; fades on hover */
+.bt-tap-pill {
+  position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+  background: rgba(20,16,10,.66); backdrop-filter: blur(6px);
+  color: #fff; font-size: 11.5px; font-weight: 600; letter-spacing: .02em;
+  padding: 6px 12px; border-radius: 100px;
+  display: inline-flex; align-items: center; gap: 6px;
+  pointer-events: none; transition: opacity .2s; white-space: nowrap;
+}
+.bt-card:hover .bt-tap-pill { opacity: 0; }
+
+/* VS badge centered between two options */
+.bt-vs {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 3;
+  width: 44px; height: 44px; border-radius: 100px;
+  background: var(--ink); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px; letter-spacing: .04em;
+  box-shadow: 0 6px 18px rgba(0,0,0,.28); border: 2.5px solid var(--card);
+  pointer-events: none;
+}
+
+/* Pricing: make the Pro card read as tappable */
+.pro-card .pro-tap-hint {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%; margin-top: 16px; font-size: 12.5px; color: rgba(255,255,255,.55);
+  letter-spacing: .02em;
+}
+.pro-card .pro-tap-hint svg { opacity: .8; }
+.pro-card { transition: transform .2s cubic-bezier(.22,1,.36,1), box-shadow .3s; }
+.pro-wrap:hover .pro-card { transform: translateY(-4px); }
+@keyframes proTapFloat { 0%,100% { transform: translateX(0); } 50% { transform: translateX(3px); } }
+.pro-card .pro-tap-hint svg { animation: proTapFloat 1.6s ease-in-out infinite; }

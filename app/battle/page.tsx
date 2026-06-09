@@ -132,23 +132,28 @@ export default function BattlePage() {
           </div>
         ) : (
           <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
               <p style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--faint)", fontWeight: 500 }}>Pick your contenders</p>
               <span style={{ fontSize: 12, color: "var(--muted)" }}>{picked.length}/{MAX_OPTIONS} selected</span>
             </div>
+            <p className={picked.length === 0 ? "bt-tap" : undefined} style={{ fontSize: 13, color: picked.length === 0 ? "var(--brand)" : "var(--muted)", fontWeight: 400, marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              👆 Tap a look to add it — choose {MIN_OPTIONS}–{MAX_OPTIONS}.
+            </p>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 12, marginBottom: 20 }}>
               {looks.map((l) => {
                 const idx = picked.indexOf(l.id);
                 const on = idx !== -1;
                 return (
-                  <button key={l.id} onClick={() => toggle(l.id)} style={{
-                    position: "relative", padding: 0, border: on ? "2px solid var(--brand)" : "1px solid var(--border)",
+                  <button key={l.id} onClick={() => toggle(l.id)} className={`bt-card${on ? " on" : ""}`} style={{
+                    position: "relative", padding: 0, border: on ? "2.5px solid var(--brand)" : "1px solid var(--border)",
                     borderRadius: 12, overflow: "hidden", background: "var(--card)", cursor: "pointer", aspectRatio: "3/4",
                   }}>
                     <img src={l.img} alt={l.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                    {on && (
-                      <span style={{ position: "absolute", top: 6, left: 6, width: 22, height: 22, borderRadius: 100, background: "var(--brand)", color: "#fff", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{idx + 1}</span>
+                    {on ? (
+                      <span style={{ position: "absolute", top: 6, left: 6, width: 24, height: 24, borderRadius: 100, background: "var(--brand)", color: "#fff", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>{idx + 1}</span>
+                    ) : (
+                      <span className="bt-tap-pill">+ Add</span>
                     )}
                   </button>
                 );

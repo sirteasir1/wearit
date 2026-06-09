@@ -72,12 +72,19 @@ export default function VotePage() {
         <h1 className="serif" style={{ fontSize: 30, fontWeight: 600, letterSpacing: "-0.03em", color: "var(--ink)", marginBottom: 6, lineHeight: 1.15 }}>
           {battle.question || "Which look wins?"}
         </h1>
-        <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 22, fontWeight: 300 }}>
-          {battle.closed ? "Voting has ended." : showResults ? `${total} vote${total === 1 ? "" : "s"} so far` : "Tap the look you'd pick."}
-        </p>
+        {battle.closed ? (
+          <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 22, fontWeight: 300 }}>Voting has ended.</p>
+        ) : showResults ? (
+          <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 22, fontWeight: 300 }}>{total} vote{total === 1 ? "" : "s"} so far</p>
+        ) : (
+          <p className="bt-tap" style={{ fontSize: 14.5, color: "var(--brand)", marginBottom: 22, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 7 }}>
+            👆 Tap the look you'd pick
+          </p>
+        )}
 
         {/* Options */}
-        <div style={{ display: "grid", gridTemplateColumns: battle.options.length === 2 ? "1fr 1fr" : "repeat(auto-fill,minmax(150px,1fr))", gap: 12, marginBottom: 22 }}>
+        <div style={{ position: "relative", display: "grid", gridTemplateColumns: battle.options.length === 2 ? "1fr 1fr" : "repeat(auto-fill,minmax(150px,1fr))", gap: 12, marginBottom: 22 }}>
+          {battle.options.length === 2 && <span className="bt-vs">VS</span>}
           {battle.options.map((o) => {
             const selected = pick === o.id;
             const mine = battle.myVote === o.id;
@@ -88,13 +95,12 @@ export default function VotePage() {
                 key={o.id}
                 onClick={() => { if (!showResults) setPick(o.id); }}
                 disabled={showResults || busy}
+                className={`bt-card${showResults ? " results" : ""}${(selected || mine) ? " on" : ""}`}
                 style={{
                   position: "relative", padding: 0, borderRadius: 14, overflow: "hidden", background: "var(--card)",
                   cursor: showResults ? "default" : "pointer", textAlign: "left",
                   border: (selected || mine) ? "2.5px solid var(--brand)" : winning ? "2.5px solid var(--gold)" : "1px solid var(--border)",
-                  boxShadow: winning ? "0 6px 24px rgba(176,138,62,0.22)" : "none",
-                  transition: "transform 0.12s, border-color 0.2s",
-                  transform: selected ? "translateY(-3px)" : "none",
+                  boxShadow: winning ? "0 6px 24px rgba(176,138,62,0.22)" : undefined,
                 }}
               >
                 <div style={{ position: "relative", aspectRatio: "3/4", background: "#14100A" }}>
@@ -102,6 +108,7 @@ export default function VotePage() {
                   {mine && (
                     <span style={{ position: "absolute", top: 8, right: 8, background: "var(--brand)", color: "#fff", borderRadius: 100, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center" }}><IconCheck size={15} /></span>
                   )}
+                  {!showResults && !selected && <span className="bt-tap-pill">👆 Tap to pick</span>}
                 </div>
                 {showResults && (
                   <div style={{ padding: "10px 12px" }}>

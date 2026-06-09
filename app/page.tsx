@@ -772,6 +772,7 @@ export default function Landing() {
                 <Link href="/signup" className="btn-pro" onClick={(e) => e.stopPropagation()}>
                   Start free trial
                 </Link>
+                <span className="pro-tap-hint">Tap the card to compare Free vs Pro <IconArrow /></span>
               </div>
               </div>
             </div>
