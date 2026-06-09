@@ -83,8 +83,9 @@ export async function createBattle(
   return d;
 }
 
-export async function fetchBattle(id: string, device: string): Promise<BattlePublic> {
-  const r = await fetch(`/api/battle/${id}?device=${encodeURIComponent(device)}`, { cache: "no-store" });
+export async function fetchBattle(id: string, device: string, light = false): Promise<BattlePublic> {
+  const q = `device=${encodeURIComponent(device)}${light ? "&light=1" : ""}`;
+  const r = await fetch(`/api/battle/${id}?${q}`, { cache: "no-store" });
   const d = await r.json();
   if (!r.ok) throw new Error(d.error || "Battle not found");
   return d;

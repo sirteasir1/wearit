@@ -4,7 +4,7 @@ import Link from "next/link";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import AppShell from "@/lib/app-shell";
-import { getWardrobe, WardrobeItem } from "@/lib/store";
+import { getWardrobe, WardrobeItem, dataURLToThumb } from "@/lib/store";
 import {
   createBattle, fetchMyBattles, Battle,
   MIN_OPTIONS, MAX_OPTIONS,
@@ -62,11 +62,13 @@ export default function BattlePage() {
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error("Please sign in again");
-      // keep selection order
-      const chosen = picked
-        .map((id) => looks.find((l) => l.id === id))
-        .filter((l): l is WardrobeItem => !!l)
-        .map((l) => ({ name: l.name, score: l.score, image: l.img }));
+      // keep selection order; shrink each thumbnail so the battle doc stays light
+      const chosen = await Promise.all(
+        picked
+          .map((id) => looks.find((l) => l.id === id))
+          .filter((l): l is WardrobeItem => !!l)
+          .map(async (l) => ({ name: l.name, score: l.score, image: await dataURLToThumb(l.img, 480, 0.6) }))
+      );
       const res = await createBattle(token, { question: question.trim(), options: chosen });
       setCreated(res);
       setPicked([]); setQuestion("");

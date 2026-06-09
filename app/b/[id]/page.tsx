@@ -28,14 +28,23 @@ export default function VotePage() {
     load(dev);
   }, [load]);
 
-  // Once the viewer has voted (or it's closed), keep results fresh.
+  // Once the viewer has voted (or it's closed), keep results fresh. Poll in
+  // "light" mode (no image bytes) and merge counts into the cached options.
   const voted = !!battle?.myVote;
   useEffect(() => {
     if (!device || !battle) return;
     if (!voted && !battle.closed) return;
-    const t = setInterval(() => load(device), 5000);
+    const t = setInterval(async () => {
+      try {
+        const fresh = await fetchBattle(id, device, true);
+        setBattle((prev) => prev ? {
+          ...fresh,
+          options: fresh.options.map((o) => ({ ...o, imageUrl: prev.options.find((p) => p.id === o.id)?.imageUrl || o.imageUrl })),
+        } : fresh);
+      } catch { /* keep showing what we have */ }
+    }, 5000);
     return () => clearInterval(t);
-  }, [device, battle, voted, load]);
+  }, [device, battle, voted, id]);
 
   const submit = async () => {
     if (!pick || busy) return;
