@@ -574,7 +574,7 @@ export default function Landing() {
               { Icon: IconCalendar, ...t.landing.features.items[4], soon: true  },
               { Icon: IconSearch,   ...t.landing.features.items[5], soon: true  },
             ].map((f, i) => (
-              <div key={f.title} className={`reveal reveal-up feature-item${i === 0 || i === 5 ? " feat-wide" : ""}`} style={{ transitionDelay: `${i * 0.07}s` }}>
+              <div key={i} className={`reveal reveal-up feature-item${i === 0 || i === 5 ? " feat-wide" : ""}`} style={{ transitionDelay: `${i * 0.07}s` }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
                   <span className="serif" style={{ fontSize: 13, fontWeight: 700, color: "var(--faint)", letterSpacing: "0.06em" }}>0{i + 1}</span>
                   <span className="feat-icon" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: "50%", border: "1px solid var(--border)", color: "var(--ink)", background: "var(--bg)" }}><f.Icon /></span>
