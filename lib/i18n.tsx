@@ -109,7 +109,7 @@ const en = {
       mostPopular: "Most popular",
       perMo: ".99 / mo",
       proFeatures: ["40 credits / month — 10× the free plan", "AI style verdict", "Unlimited wardrobe", "Share to socials", "Calendar integration", "AI shop-discovery agent"],
-      startTrial: "Start free trial",
+      startTrial: "Buy Pro",
       tapHint: "Tap the card to compare Free vs Pro",
     },
     proModal: {
@@ -128,7 +128,7 @@ const en = {
         ["Calendar styling", "—", "Plan looks by date", true],
         ["AI shop-discovery agent", "—", "Finds pieces to buy", true],
       ] as [string, string, string, boolean][],
-      startTrial: "Start free trial",
+      startTrial: "Buy Pro",
       maybeLater: "Maybe later",
     },
     cta: {
@@ -586,7 +586,7 @@ const ru: Dict = {
       mostPopular: "Самый популярный",
       perMo: ".99 / мес",
       proFeatures: ["40 кредитов в месяц — в 10 раз больше бесплатного", "Вердикт ИИ по стилю", "Безлимитный гардероб", "Поделиться в соцсетях", "Интеграция с календарём", "ИИ-агент поиска по магазинам"],
-      startTrial: "Начать бесплатный период",
+      startTrial: "Купить Pro",
       tapHint: "Нажмите на карточку, чтобы сравнить Free и Pro",
     },
     proModal: {
@@ -605,7 +605,7 @@ const ru: Dict = {
         ["Стайлинг по календарю", "—", "Образы по датам", true],
         ["ИИ-агент поиска по магазинам", "—", "Находит вещи для покупки", true],
       ] as [string, string, string, boolean][],
-      startTrial: "Начать бесплатный период",
+      startTrial: "Купить Pro",
       maybeLater: "Может позже",
     },
     cta: {

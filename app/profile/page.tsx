@@ -290,9 +290,6 @@ function ProModal({ onClose, checkoutHref }: { onClose: () => void; checkoutHref
           style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"#fff",color:"var(--ink)",borderRadius:8,padding:"15px",fontSize:15,fontWeight:600,textDecoration:"none" }}>
           {t.profile.upgradeToPro} <IconArrowRight size={16}/>
         </a>
-        <button onClick={onClose} style={{ width:"100%",marginTop:12,background:"none",border:"none",color:"rgba(255,255,255,0.45)",fontSize:13,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif" }}>
-          {t.profile.maybeLater}
-        </button>
       </div>
     </div>
   );

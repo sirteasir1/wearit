@@ -856,9 +856,6 @@ function LandingProModal({ onClose }: { onClose: () => void }) {
         <Link href="/signup" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#fff", color: "var(--ink)", borderRadius: 8, padding: "15px", fontSize: 15, fontWeight: 600, textDecoration: "none" }}>
           {t.landing.proModal.startTrial}
         </Link>
-        <button onClick={onClose} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer", fontFamily: "'Hanken Grotesk',sans-serif" }}>
-          {t.landing.proModal.maybeLater}
-        </button>
       </div>
     </div>
   );
