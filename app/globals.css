@@ -1795,12 +1795,27 @@ button, input, textarea, select, optgroup { font-family: inherit; }
 
   .auth-split { grid-template-columns: 1fr; }
   .auth-right { display: none; }
+
+  /* App sidebar floats over the page instead of squeezing it */
+  .app-sidebar { position: fixed !important; top: 0; left: 0; z-index: 70; box-shadow: 0 0 48px rgba(20,16,10,0.22); }
+  .app-sidebar-backdrop { display: block; position: fixed; inset: 0; background: rgba(20,16,10,0.45); backdrop-filter: blur(2px); z-index: 69; }
+
+  /* Leave room for the floating sidebar opener (top-left) on every app page */
+  .app-main { padding-top: 56px; }
+
+  /* Roomier touch padding + headings that fit a phone on inner app pages */
+  .page-in { padding: 24px 20px 40px !important; }
+  .page-in h1 { font-size: clamp(30px, 8vw, 38px) !important; }
 }
+
+/* Backdrop is mobile-only */
+.app-sidebar-backdrop { display: none; }
 
 /* ── SMALL MOBILE (max 480px) ── */
 @media (max-width: 480px) {
   .hero-stats    { flex-direction: row; gap: 28px; }
   .features-grid { grid-template-columns: 1fr; }
+  .page-in { padding: 20px 16px 36px !important; }
 }
 
 /* ─────────────────────────────────────────────

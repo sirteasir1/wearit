@@ -33,10 +33,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => onAuthStateChanged(auth, (u) => setUser(u)), []);
 
-  /* restore sidebar preference */
+  /* restore sidebar preference — default to collapsed on mobile so the
+     248px rail never squeezes the page on a phone */
   useEffect(() => {
-    setCollapsed(localStorage.getItem(SIDEBAR_KEY) === "1");
+    const saved = localStorage.getItem(SIDEBAR_KEY);
+    if (saved === "1") setCollapsed(true);
+    else if (saved === "0") setCollapsed(false);
+    else setCollapsed(window.innerWidth <= 768);
   }, []);
+
+  /* On mobile the sidebar floats over the page; close it after navigating. */
+  const closeOnMobile = () => {
+    if (typeof window !== "undefined" && window.innerWidth <= 768) setCollapsed(true);
+  };
 
   const toggle = () => {
     setCollapsed((c) => {
@@ -103,8 +112,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </button>
       )}
 
+      {/* Dimmed backdrop — only shown on mobile while the sidebar is open */}
+      {!collapsed && <div className="app-sidebar-backdrop" onClick={toggle} aria-hidden="true" />}
+
       {/* Sidebar */}
       <aside
+        className="app-sidebar"
         style={{
           width: collapsed ? 0 : 248,
           flexShrink: 0,
@@ -140,7 +153,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           {/* Nav */}
           <nav style={{ flex:1,display:"flex",flexDirection:"column",gap:2 }}>
             {NAV.map(({ href, Icon, key }) => (
-              <Link key={href} href={href} className={`sidebar-link${path === href ? " active" : ""}`}>
+              <Link key={href} href={href} onClick={closeOnMobile} className={`sidebar-link${path === href ? " active" : ""}`}>
                 <Icon size={18} />
                 {t.nav[key]}
               </Link>
