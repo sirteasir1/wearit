@@ -6,14 +6,15 @@ import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { getProfile, pullRemote } from "@/lib/store";
 import { IconSpark, IconHanger, IconUser, IconSignOut, IconPanel, IconWand, IconBattle } from "@/lib/icons";
+import { useI18n, LangSwitch } from "@/lib/i18n";
 
 const NAV = [
-  { href: "/app",      Icon: IconSpark,  label: "Try on"   },
-  { href: "/agent",    Icon: IconWand,   label: "Stylist"  },
-  { href: "/battle",   Icon: IconBattle, label: "Battle"   },
-  { href: "/wardrobe", Icon: IconHanger, label: "Wardrobe" },
-  { href: "/profile",  Icon: IconUser,   label: "Profile"  },
-];
+  { href: "/app",      Icon: IconSpark,  key: "tryOn"    },
+  { href: "/agent",    Icon: IconWand,   key: "stylist"  },
+  { href: "/battle",   Icon: IconBattle, key: "battle"   },
+  { href: "/wardrobe", Icon: IconHanger, key: "wardrobe" },
+  { href: "/profile",  Icon: IconUser,   key: "profile"  },
+] as const;
 
 const SIDEBAR_KEY = "wearit:sidebar-collapsed";
 
@@ -21,6 +22,7 @@ const SIDEBAR_KEY = "wearit:sidebar-collapsed";
 let didInitialSync = false;
 
 export default function AppShell({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const path   = usePathname();
   const router = useRouter();
   const [user, setUser]             = useState<User | null | "loading">(() => auth.currentUser ?? "loading");
@@ -71,7 +73,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
-  const displayName = user.displayName || user.email?.split("@")[0] || "User";
+  const displayName = user.displayName || user.email?.split("@")[0] || t.common.user;
   const initials    = displayName.slice(0, 1).toUpperCase();
 
   const handleSignOut = async () => {
@@ -137,13 +139,18 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
           {/* Nav */}
           <nav style={{ flex:1,display:"flex",flexDirection:"column",gap:2 }}>
-            {NAV.map(({ href, Icon, label }) => (
+            {NAV.map(({ href, Icon, key }) => (
               <Link key={href} href={href} className={`sidebar-link${path === href ? " active" : ""}`}>
                 <Icon size={18} />
-                {label}
+                {t.nav[key]}
               </Link>
             ))}
           </nav>
+
+          {/* Language */}
+          <div style={{ padding:"4px 8px 12px",display:"flex",justifyContent:"center" }}>
+            <LangSwitch />
+          </div>
 
           {/* User row */}
           <div style={{ borderTop:"1px solid var(--border)",paddingTop:12 }}>
@@ -157,7 +164,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </div>
               <div style={{ minWidth:0 }}>
                 <div style={{ fontSize:13,fontWeight:500,color:"var(--ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{displayName}</div>
-                <div style={{ fontSize:11,color:"var(--muted)" }}>Free plan</div>
+                <div style={{ fontSize:11,color:"var(--muted)" }}>{t.common.freePlan}</div>
               </div>
             </Link>
             <button
@@ -167,7 +174,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               style={{ color:"var(--muted)" }}
             >
               <IconSignOut size={18} />
-              {signingOut ? "Signing out…" : "Sign out"}
+              {signingOut ? t.common.signingOut : t.common.signOut}
             </button>
           </div>
         </div>

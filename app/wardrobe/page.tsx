@@ -7,9 +7,9 @@ import AppShell from "@/lib/app-shell";
 import { getWardrobe, saveWardrobe, removeWardrobeItem, WardrobeItem } from "@/lib/store";
 import { IconHanger, IconHeart, IconHeartFilled, IconShare, IconSpark, IconArrowRight, IconSearch, IconTrash } from "@/lib/icons";
 import { toast } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 
 const VERDICTS: Record<string,string> = { buy:"tag-green", skip:"tag-red", maybe:"tag-amber" };
-const LABELS:   Record<string,string> = { buy:"Buy it",    skip:"Skip it", maybe:"Maybe" };
 
 /* Card that gently tilts in 3D toward the cursor */
 function TiltCard({ children, className, style }: { children: ReactNode; className?: string; style?: React.CSSProperties }) {
@@ -37,6 +37,11 @@ function TiltCard({ children, className, style }: { children: ReactNode; classNa
 type Sort = "newest" | "top" | "favorites";
 
 export default function Wardrobe() {
+  const { t } = useI18n();
+  const LABELS: Record<string,string> = { buy: t.wardrobe.verdictBuy, skip: t.wardrobe.verdictSkip, maybe: t.wardrobe.verdictMaybe };
+  const catLabel = (c: string): string => (
+    { All: t.wardrobe.catAll, Tops: t.wardrobe.catTops, Bottoms: t.wardrobe.catBottoms, "One-pieces": t.wardrobe.catOnePieces, Favorites: t.wardrobe.catFavorites, Other: t.wardrobe.catOther } as Record<string,string>
+  )[c] ?? c;
   const [uid, setUid]       = useState<string | null>(null);
   const [items, setItems]   = useState<WardrobeItem[]>([]);
   const [filter, setFilter] = useState("All");
@@ -58,9 +63,9 @@ export default function Wardrobe() {
     const next = items.filter(i => i.id !== id);
     setItems(next);
     if (uid) removeWardrobeItem(uid, id);
-    toast("Removed from wardrobe");
+    toast(t.wardrobe.removed);
   };
-  const share = async (img: string) => { await navigator.clipboard.writeText(img); toast("Link copied"); };
+  const share = async (img: string) => { await navigator.clipboard.writeText(img); toast(t.wardrobe.linkCopied); };
 
   const cats = ["All","Tops","Bottoms","One-pieces","Favorites"];
   const q = query.trim().toLowerCase();
@@ -78,12 +83,12 @@ export default function Wardrobe() {
       <div className="page-in" style={{ padding:"48px 44px",maxWidth:1040 }}>
         <div style={{ display:"flex",alignItems:"flex-end",justifyContent:"space-between",marginBottom:32,flexWrap:"wrap",gap:16 }}>
           <div>
-            <p style={{ fontSize:11,letterSpacing:"0.15em",textTransform:"uppercase",color:"var(--muted)",marginBottom:14,fontWeight:500 }}>Collection</p>
-            <h1 className="serif" style={{ fontSize:46,fontWeight:600,letterSpacing:"-0.035em",color:"var(--ink)",marginBottom:6 }}>My wardrobe</h1>
-            <p style={{ fontSize:15,color:"var(--muted)",fontWeight:300 }}>{items.length} {items.length===1?"look":"looks"} saved</p>
+            <p style={{ fontSize:11,letterSpacing:"0.15em",textTransform:"uppercase",color:"var(--muted)",marginBottom:14,fontWeight:500 }}>{t.wardrobe.eyebrow}</p>
+            <h1 className="serif" style={{ fontSize:46,fontWeight:600,letterSpacing:"-0.035em",color:"var(--ink)",marginBottom:6 }}>{t.wardrobe.title}</h1>
+            <p style={{ fontSize:15,color:"var(--muted)",fontWeight:300 }}>{t.wardrobe.looksSaved(items.length)}</p>
           </div>
           <Link href="/app" className="btn-dark" style={{ padding:"11px 22px",fontSize:14,gap:8 }}>
-            <IconSpark size={16}/> New try-on
+            <IconSpark size={16}/> {t.wardrobe.newTryOn}
           </Link>
         </div>
 
@@ -96,14 +101,14 @@ export default function Wardrobe() {
                 <span style={{ position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:"var(--faint)",display:"flex" }}><IconSearch size={16}/></span>
                 <input
                   value={query} onChange={e=>setQuery(e.target.value)}
-                  placeholder="Search your looks…"
+                  placeholder={t.wardrobe.search}
                   style={{ width:"100%",padding:"10px 14px 10px 38px",borderRadius:100,border:"1px solid var(--border)",background:"var(--card)",fontSize:14,fontFamily:"'Hanken Grotesk',sans-serif",outline:"none",color:"var(--ink)" }}
                   onFocus={e=>{ e.currentTarget.style.borderColor="var(--brand)"; e.currentTarget.style.boxShadow="0 0 0 3px var(--brand-ring)"; }}
                   onBlur={e=>{ e.currentTarget.style.borderColor="var(--border)"; e.currentTarget.style.boxShadow="none"; }}
                 />
               </div>
               <div style={{ display:"flex",gap:6 }}>
-                {([["newest","Newest"],["top","Top rated"],["favorites","Favorites"]] as [Sort,string][]).map(([v,label]) => (
+                {([["newest",t.wardrobe.sortNewest],["top",t.wardrobe.sortTop],["favorites",t.wardrobe.sortFav]] as [Sort,string][]).map(([v,label]) => (
                   <button key={v} className="chip" onClick={()=>setSort(v)} style={{
                     padding:"8px 14px",borderRadius:100,fontSize:12.5,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif",
                     background: sort===v ? "var(--brand)" : "var(--card)",
@@ -125,7 +130,7 @@ export default function Wardrobe() {
                   border:     filter===c ? "1px solid var(--brand)" : "1px solid var(--border)",
                   fontWeight: filter===c ? 500 : 400,
                   boxShadow:  filter===c ? "0 6px 16px rgba(47,76,110,0.22)" : "none",
-                }}>{c}</button>
+                }}>{catLabel(c)}</button>
               ))}
             </div>
           </>
@@ -157,7 +162,7 @@ export default function Wardrobe() {
                 <div style={{ padding:"14px 16px" }}>
                   <p style={{ fontSize:14,fontWeight:500,color:"var(--ink)",marginBottom:4 }}>{item.name}</p>
                   <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-                    <span style={{ fontSize:12,color:"var(--muted)" }}>{item.category}</span>
+                    <span style={{ fontSize:12,color:"var(--muted)" }}>{catLabel(item.category)}</span>
                     <span style={{ fontSize:12,color:"var(--muted)" }}>{item.score}/10</span>
                   </div>
                 </div>
@@ -169,13 +174,13 @@ export default function Wardrobe() {
           <div style={{ border:"1px dashed var(--border)",borderRadius:16,padding:"80px 32px",textAlign:"center",background:"var(--card)" }}>
             <div style={{ display:"inline-flex",color:"var(--faint)",marginBottom:18 }}><IconHanger size={42}/></div>
             <h3 className="serif" style={{ fontSize:26,fontWeight:600,color:"var(--ink)",marginBottom:10,letterSpacing:"-0.025em" }}>
-              {items.length === 0 ? "Your wardrobe is empty" : "Nothing in this filter"}
+              {items.length === 0 ? t.wardrobe.emptyTitle : t.wardrobe.nothingInFilter}
             </h3>
             <p style={{ fontSize:14,color:"var(--muted)",fontWeight:300,marginBottom:28,maxWidth:340,marginInline:"auto",lineHeight:1.7 }}>
-              Try a garment on and save the looks you love — they’ll live here, scored and organized.
+              {t.wardrobe.emptyBody}
             </p>
             <Link href="/app" className="btn-dark" style={{ padding:"12px 26px",fontSize:14,gap:8 }}>
-              Try your first look <IconArrowRight size={15}/>
+              {t.wardrobe.tryFirst} <IconArrowRight size={15}/>
             </Link>
           </div>
         )}

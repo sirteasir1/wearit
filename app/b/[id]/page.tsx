@@ -7,8 +7,10 @@ import {
   REACTIONS, Reaction,
 } from "@/lib/battle";
 import { IconBattle, IconArrowRight, IconCheck } from "@/lib/icons";
+import { useI18n, LangSwitch } from "@/lib/i18n";
 
 export default function VotePage() {
+  const { t } = useI18n();
   const { id } = useParams<{ id: string }>();
   // Stable per-browser id, computed once (no setState-in-effect). It isn't
   // rendered, so the server "" vs client value difference is invisible.
@@ -26,7 +28,7 @@ export default function VotePage() {
       setBattle((prev) => light && prev
         ? { ...fresh, options: fresh.options.map((o) => ({ ...o, imageUrl: prev.options.find((p) => p.id === o.id)?.imageUrl || o.imageUrl })) }
         : fresh);
-    } catch (e) { setError(e instanceof Error ? e.message : "Not found"); }
+    } catch (e) { setError(e instanceof Error ? e.message : t.vote.notFound); }
   }, [id, device]);
 
   useEffect(() => { if (device) load(); }, [device, load]);
@@ -44,7 +46,7 @@ export default function VotePage() {
     if (!pick || busy) return;
     setBusy(true);
     try { setBattle(await castVote(id, pick, reaction, device)); }
-    catch (e) { setError(e instanceof Error ? e.message : "Vote failed"); }
+    catch (e) { setError(e instanceof Error ? e.message : t.vote.voteFailed); }
     finally { setBusy(false); }
   };
 
@@ -60,25 +62,28 @@ export default function VotePage() {
       <div style={{ width: "100%", maxWidth: 560 }}>
 
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, color: "var(--brand)" }}>
-          <IconBattle size={20} /> <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>Outfit Battle</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--brand)" }}>
+            <IconBattle size={20} /> <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>{t.vote.badge}</span>
+          </div>
+          <LangSwitch />
         </div>
         <h1 className="serif" style={{ fontSize: 30, fontWeight: 600, letterSpacing: "-0.03em", color: "var(--ink)", marginBottom: 6, lineHeight: 1.15 }}>
-          {battle.question || "Which look wins?"}
+          {battle.question || t.vote.whichWins}
         </h1>
         {battle.closed ? (
-          <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 22, fontWeight: 300 }}>Voting has ended.</p>
+          <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 22, fontWeight: 300 }}>{t.vote.ended}</p>
         ) : showResults ? (
-          <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 22, fontWeight: 300 }}>{total} vote{total === 1 ? "" : "s"} so far</p>
+          <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 22, fontWeight: 300 }}>{t.vote.votesSoFar(total)}</p>
         ) : (
           <p className="bt-tap" style={{ fontSize: 14.5, color: "var(--brand)", marginBottom: 22, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 7 }}>
-            👆 Tap the look you’d pick
+            {t.vote.tapYoudPick}
           </p>
         )}
 
         {/* Options */}
         <div style={{ position: "relative", display: "grid", gridTemplateColumns: battle.options.length === 2 ? "1fr 1fr" : "repeat(auto-fill,minmax(150px,1fr))", gap: 12, marginBottom: 22 }}>
-          {battle.options.length === 2 && <span className="bt-vs">VS</span>}
+          {battle.options.length === 2 && <span className="bt-vs">{t.vote.vs}</span>}
           {battle.options.map((o) => {
             const selected = pick === o.id;
             const mine = battle.myVote === o.id;
@@ -102,13 +107,13 @@ export default function VotePage() {
                   {mine && (
                     <span style={{ position: "absolute", top: 8, right: 8, background: "var(--brand)", color: "#fff", borderRadius: 100, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center" }}><IconCheck size={15} /></span>
                   )}
-                  {!showResults && !selected && <span className="bt-tap-pill">👆 Tap to pick</span>}
+                  {!showResults && !selected && <span className="bt-tap-pill">{t.vote.tapToPick}</span>}
                 </div>
                 {showResults && (
                   <div style={{ padding: "10px 12px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: winning ? "var(--gold)" : "var(--ink)" }}>{pct}%</span>
-                      <span style={{ fontSize: 12, color: "var(--muted)" }}>{o.votes} vote{o.votes === 1 ? "" : "s"}</span>
+                      <span style={{ fontSize: 12, color: "var(--muted)" }}>{t.vote.votes(o.votes)}</span>
                     </div>
                     <div style={{ height: 6, borderRadius: 3, background: "var(--border)", overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${pct}%`, background: winning ? "var(--gold)" : "var(--brand)", borderRadius: 3, transition: "width 0.6s" }} />
@@ -141,7 +146,7 @@ export default function VotePage() {
             </div>
             <button className={`btn-dark${pick && !busy ? " btn-ready" : ""}`} onClick={submit} disabled={!pick || busy}
               style={{ width: "100%", padding: "16px", fontSize: 15, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              {busy ? <div className="spinner" style={{ width: 18, height: 18 }} /> : pick ? "Cast my vote" : "Pick a look first"}
+              {busy ? <div className="spinner" style={{ width: 18, height: 18 }} /> : pick ? t.vote.castMyVote : t.vote.pickFirst}
             </button>
           </div>
         )}
@@ -149,10 +154,10 @@ export default function VotePage() {
         {/* Post-vote CTA — the growth loop */}
         {showResults && (
           <div style={{ textAlign: "center", marginTop: 30, paddingTop: 26, borderTop: "1px solid var(--border)" }}>
-            <p style={{ fontSize: 15, color: "var(--ink)", fontWeight: 500, marginBottom: 4 }}>Want to settle your own outfit debate?</p>
-            <p style={{ fontSize: 13.5, color: "var(--muted)", marginBottom: 16, fontWeight: 300 }}>Try clothes on yourself and run a battle in seconds.</p>
+            <p style={{ fontSize: 15, color: "var(--ink)", fontWeight: 500, marginBottom: 4 }}>{t.vote.settle}</p>
+            <p style={{ fontSize: 13.5, color: "var(--muted)", marginBottom: 16, fontWeight: 300 }}>{t.vote.settleBody}</p>
             <Link href="/" className="btn-dark" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 22px", borderRadius: 10, fontSize: 14, textDecoration: "none" }}>
-              Make your own with Wearit <IconArrowRight size={15} />
+              {t.vote.makeYourOwn} <IconArrowRight size={15} />
             </Link>
           </div>
         )}

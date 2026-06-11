@@ -22,6 +22,7 @@ import {
   IconTikTok, IconWhatsApp, IconDownload, IconLinkChain, IconScrub,
 } from "@/lib/icons";
 import { toast } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 
 type Category = "tops" | "bottoms" | "one-pieces";
 type Verdict  = "buy" | "skip" | "maybe";
@@ -32,9 +33,9 @@ type GItem = { id: string; file?: File; url: string; cat: Category };
 const MAX_GARMENTS = 4;
 
 const VERDICT = {
-  buy:   { label: "Buy it",  color: "#1a7a2e", tag: "tag-green" },
-  skip:  { label: "Skip it", color: "#b71c1c", tag: "tag-red"   },
-  maybe: { label: "Maybe",   color: "#a16207", tag: "tag-amber" },
+  buy:   { color: "#1a7a2e", tag: "tag-green" },
+  skip:  { color: "#b71c1c", tag: "tag-red"   },
+  maybe: { color: "#a16207", tag: "tag-amber" },
 };
 
 const CAT_LABEL: Record<Category, WardrobeItem["category"]> = {
@@ -43,6 +44,7 @@ const CAT_LABEL: Record<Category, WardrobeItem["category"]> = {
 
 /* Before / after comparison slider */
 function BeforeAfter({ before, after }: { before: string; after: string }) {
+  const { t } = useI18n();
   const [pos, setPos] = useState(50);
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef(false);
@@ -60,10 +62,10 @@ function BeforeAfter({ before, after }: { before: string; after: string }) {
       onPointerUp={() => { drag.current = false; }}
       onPointerCancel={() => { drag.current = false; }}
     >
-      <img className="ba-after" src={after} alt="Try-on" />
-      <img className="ba-before" src={before} alt="You" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }} />
-      <span className="ba-tag" style={{ left: 14 }}>You</span>
-      <span className="ba-tag" style={{ right: 14 }}>Try-on</span>
+      <img className="ba-after" src={after} alt={t.app.tryOnTag} />
+      <img className="ba-before" src={before} alt={t.app.you} style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }} />
+      <span className="ba-tag" style={{ left: 14 }}>{t.app.you}</span>
+      <span className="ba-tag" style={{ right: 14 }}>{t.app.tryOnTag}</span>
       <div className="ba-divider" style={{ left: `${pos}%` }}>
         <div className="ba-handle"><IconScrub size={18} /></div>
       </div>
@@ -101,6 +103,8 @@ function Confetti() {
 }
 
 export default function TryOnApp() {
+  const { t } = useI18n();
+  const VERDICT_LABEL: Record<Verdict, string> = { buy: t.app.verdictBuy, skip: t.app.verdictSkip, maybe: t.app.verdictMaybe };
   const [uid, setUid]         = useState<string | null>(null);
   const [photo, setPhoto]     = useState<string | null>(null);
   const [garments, setGarments] = useState<GItem[]>([]);
@@ -127,7 +131,7 @@ export default function TryOnApp() {
     // if we just came back from a successful upgrade, re-sync the plan first
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("upgraded")) {
       await pullRemote(u.uid);
-      toast("Welcome to Pro — 40 credits unlocked", "success");
+      toast(t.app.welcomePro, "success");
     }
     const p = getProfile(u.uid);
     setPhoto(p.photo);
@@ -158,7 +162,7 @@ export default function TryOnApp() {
   const onGarment = useCallback((f: File) => {
     if (!f.type.startsWith("image/") || f.size > 10_000_000) return;
     setGarments((prev) => {
-      if (prev.length >= MAX_GARMENTS) { toast(`Up to ${MAX_GARMENTS} pieces per look`, "error"); return prev; }
+      if (prev.length >= MAX_GARMENTS) { toast(t.app.upToPieces(MAX_GARMENTS), "error"); return prev; }
       return [...prev, { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, file: f, url: URL.createObjectURL(f), cat: "tops" }];
     });
     setResult(null); setError(null); setSaved(false);
@@ -169,24 +173,24 @@ export default function TryOnApp() {
         const r = await fetch("/api/detect-garments", { method: "POST", body: fd });
         if (!r.ok) return;
         const d = await r.json();
-        if (d.multiple) toast("Looks like several items in one photo — add each piece separately for a cleaner try-on, and set its type below.", "default", 5200);
+        if (d.multiple) toast(t.app.multipleItems, "default", 5200);
       } catch { /* detection is best-effort */ }
     })();
-  }, []);
+  }, [t]);
 
   const useLink = async (rawUrl?: string) => {
     const u = (rawUrl ?? linkUrl).trim();
     if (!u || linkBusy) return;
-    if (garments.length >= MAX_GARMENTS) { toast(`Up to ${MAX_GARMENTS} pieces per look`, "error"); return; }
+    if (garments.length >= MAX_GARMENTS) { toast(t.app.upToPieces(MAX_GARMENTS), "error"); return; }
     setLinkBusy(true); setError(null);
     try {
       const r = await fetch("/api/fetch-image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: u }) });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Couldn't load that link");
+      if (!r.ok) throw new Error(d.error || t.app.couldntLoadLink);
       const file = await dataURLToFile(d.dataUrl, "garment.jpg");
-      if (addGarment({ file, url: d.dataUrl, cat: "tops" })) { setLinkUrl(""); toast("Garment added from link", "success"); }
+      if (addGarment({ file, url: d.dataUrl, cat: "tops" })) { setLinkUrl(""); toast(t.app.garmentAdded, "success"); }
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Couldn't load that link", "error");
+      toast(e instanceof Error ? e.message : t.app.couldntLoadLink, "error");
     } finally {
       setLinkBusy(false);
     }
@@ -209,9 +213,7 @@ export default function TryOnApp() {
     const cost = garments.length;
     if (!photo || cost === 0 || loading) return;
     if (credits < cost) {
-      setError(cost > 1
-        ? `This look needs ${cost} credits — you have ${credits} left. Upgrade to Pro for more.`
-        : "You're out of credits. Upgrade to Pro for 40 a month.");
+      setError(cost > 1 ? t.app.needsCredits(cost, credits) : t.app.outOfCredits);
       return;
     }
     setLoading(true); setError(null); setResult(null); setSaved(false);
@@ -229,13 +231,13 @@ export default function TryOnApp() {
       if (body.gender)   fd.append("gender", body.gender);
       const r = await fetch("/api/tryon-demo", { method: "POST", body: fd });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Failed");
+      if (!r.ok) throw new Error(d.error || t.app.failed);
       setProg(100);
       await new Promise(res => setTimeout(res, 300));
       setResult(d);
       if (uid) { const n = incTryOns(uid, cost); setCredits(Math.max(0, creditLimit(uid) - n)); }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(e instanceof Error ? e.message : t.app.somethingWrong);
     } finally {
       setLoading(false);
     }
@@ -247,9 +249,10 @@ export default function TryOnApp() {
     // store a small thumbnail (not the full-res image) so localStorage never overflows
     const thumb = await dataURLToThumb(result.resultImageUrl, 560, 0.72);
     const primaryCat = garments[0]?.cat ?? "tops";
+    const catName = primaryCat === "tops" ? t.app.catTop : primaryCat === "bottoms" ? t.app.catBottom : t.app.catFull;
     addWardrobeItem(uid, {
       id: String(Date.now()),
-      name: garments.length > 1 ? `Full look · ${garments.length} pieces` : `${CAT_LABEL[primaryCat]} try-on`,
+      name: garments.length > 1 ? t.app.fullLook(garments.length) : t.app.catTryOn(catName),
       category: CAT_LABEL[primaryCat],
       verdict: result.styleAdvice.verdict,
       score: result.styleAdvice.score,
@@ -257,10 +260,10 @@ export default function TryOnApp() {
       fav: true,
       createdAt: Date.now(),
     });
-    toast("Saved to your wardrobe", "success");
+    toast(t.app.savedToYourWardrobe, "success");
   };
 
-  const SHARE_TEXT = "My new look, tried on with Wearit ✨";
+  const SHARE_TEXT = t.app.shareText;
 
   const getResultFile = async () => {
     const res = await fetch(result!.resultImageUrl);
@@ -290,7 +293,7 @@ export default function TryOnApp() {
 
   const share = async (platform: string) => {
     if (!result) return;
-    if (platform === "copy") { await navigator.clipboard.writeText(result.resultImageUrl); toast("Link copied"); return; }
+    if (platform === "copy") { await navigator.clipboard.writeText(result.resultImageUrl); toast(t.common.linkCopied); return; }
     if (platform === "download") { await downloadImage(); return; }
 
     // Try the native share sheet first — it routes the real photo to IG/TikTok/WhatsApp.
@@ -305,13 +308,14 @@ export default function TryOnApp() {
       whatsapp:  `https://wa.me/?text=${encodeURIComponent(SHARE_TEXT)}`,
     };
     if (open[platform]) {
-      toast("Photo saved — opening " + platform[0].toUpperCase() + platform.slice(1) + " to post it", "success");
+      toast(t.app.photoSavedOpening(platform[0].toUpperCase() + platform.slice(1)), "success");
       window.open(open[platform], "_blank");
     }
   };
 
   const vc = result ? VERDICT[result.styleAdvice.verdict] : null;
-  const phase = prog < 35 ? "Reading your fit" : prog < 70 ? "Draping the garment" : "Scoring the look";
+  const vcLabel = result ? VERDICT_LABEL[result.styleAdvice.verdict] : "";
+  const phase = prog < 35 ? t.app.phaseReading : prog < 70 ? t.app.phaseDraping : t.app.phaseScoring;
 
   return (
     <AppShell>
@@ -320,15 +324,15 @@ export default function TryOnApp() {
         {/* LEFT */}
         <div className="page-in" style={{ padding:"48px 44px",borderRight:result?"1px solid var(--border)":undefined,maxWidth:result?undefined:620,margin:result?undefined:"0 auto",width:"100%" }}>
           <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:14 }}>
-            <p style={{ fontSize:11,letterSpacing:"0.15em",textTransform:"uppercase",color:"var(--muted)",fontWeight:500 }}>New try-on</p>
+            <p style={{ fontSize:11,letterSpacing:"0.15em",textTransform:"uppercase",color:"var(--muted)",fontWeight:500 }}>{t.app.newTryOn}</p>
             <span style={{ display:"inline-flex",alignItems:"center",gap:7,fontSize:12,fontWeight:500,color:"var(--ink)",background:"var(--card)",border:"1px solid var(--border)",padding:"5px 12px",borderRadius:100 }}>
               <span style={{ width:6,height:6,borderRadius:"50%",background:credits>0?"#1a7a2e":"#b71c1c" }} />
-              {credits} {credits === 1 ? "credit" : "credits"} left
+              {t.app.creditsLeft(credits)}
             </span>
           </div>
-          <h1 className="serif" style={{ fontSize:46,fontWeight:600,letterSpacing:"-0.035em",marginBottom:8,color:"var(--ink)" }}>Try on anything</h1>
+          <h1 className="serif" style={{ fontSize:46,fontWeight:600,letterSpacing:"-0.035em",marginBottom:8,color:"var(--ink)" }}>{t.app.title}</h1>
           <p style={{ fontSize:15,color:"var(--muted)",marginBottom:32,fontWeight:300 }}>
-            {photo ? "Your photo is ready. Just drop in a garment." : "Add your photo to your profile, then come back to try things on."}
+            {photo ? t.app.photoReady : t.app.addPhotoPrompt}
           </p>
 
           {photo ? (
@@ -340,18 +344,18 @@ export default function TryOnApp() {
               <div style={{ display:"flex",alignItems:"center",gap:14,padding:"12px 14px",border:"1px solid var(--border)",borderRadius:12,background:"var(--card)",marginBottom:22 }}>
                 <img src={photo} alt="You" style={{ width:44,height:44,borderRadius:8,objectFit:"cover",flexShrink:0 }}/>
                 <div style={{ flex:1,minWidth:0 }}>
-                  <div style={{ fontSize:13,fontWeight:500,color:"var(--ink)" }}>Wearing your photo</div>
-                  <div style={{ fontSize:12,color:"var(--muted)",marginTop:1 }}>From your fit profile</div>
+                  <div style={{ fontSize:13,fontWeight:500,color:"var(--ink)" }}>{t.app.wearingYourPhoto}</div>
+                  <div style={{ fontSize:12,color:"var(--muted)",marginTop:1 }}>{t.app.fromFitProfile}</div>
                 </div>
-                <Link href="/onboarding" style={{ fontSize:12,color:"var(--ink)",textDecoration:"none",border:"1px solid var(--border)",padding:"7px 14px",borderRadius:6 }}>Change</Link>
+                <Link href="/onboarding" style={{ fontSize:12,color:"var(--ink)",textDecoration:"none",border:"1px solid var(--border)",padding:"7px 14px",borderRadius:6 }}>{t.app.change}</Link>
               </div>
 
               {/* Your look — one or more pieces, layered on you together */}
               <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8 }}>
-                <p style={{ fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--faint)",fontWeight:500 }}>Your look</p>
-                <span style={{ fontSize:12,color:"var(--muted)" }}>{garments.length}/{MAX_GARMENTS} pieces</span>
+                <p style={{ fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--faint)",fontWeight:500 }}>{t.app.yourLook}</p>
+                <span style={{ fontSize:12,color:"var(--muted)" }}>{t.app.piecesCount(garments.length, MAX_GARMENTS)}</span>
               </div>
-              <p style={{ fontSize:13,color:"var(--muted)",lineHeight:1.6,fontWeight:300,marginBottom:16 }}>Add one piece or build a full outfit — a top, bottoms, shoes and a jacket get layered on you together. Each piece uses 1 credit; set the right type under each.</p>
+              <p style={{ fontSize:13,color:"var(--muted)",lineHeight:1.6,fontWeight:300,marginBottom:16 }}>{t.app.lookHelp}</p>
 
               {garments.length === 0 ? (
                 /* Empty state — one clean, full-width drop zone */
@@ -365,8 +369,8 @@ export default function TryOnApp() {
                 >
                   <div style={{ textAlign:"center",padding:28,pointerEvents:"none",color:"var(--muted)" }}>
                     <div className="up-float" style={{ display:"inline-flex",color:"var(--faint)",marginBottom:14 }}><IconUpload size={34}/></div>
-                    <p style={{ fontSize:15,color:"var(--ink)",fontWeight:500,marginBottom:6 }}>Drop a garment photo</p>
-                    <p style={{ fontSize:13,color:"var(--muted)",lineHeight:1.6,fontWeight:300 }}>Any item from any store — a screenshot or product image.<br/><span style={{ fontSize:11,color:"var(--faint)" }}>JPG · PNG · WebP · max 10MB</span></p>
+                    <p style={{ fontSize:15,color:"var(--ink)",fontWeight:500,marginBottom:6 }}>{t.app.dropGarment}</p>
+                    <p style={{ fontSize:13,color:"var(--muted)",lineHeight:1.6,fontWeight:300 }}>{t.app.anyItem}<br/><span style={{ fontSize:11,color:"var(--faint)" }}>{t.app.fileTypes}</span></p>
                   </div>
                 </div>
               ) : null}
@@ -378,7 +382,7 @@ export default function TryOnApp() {
                   disabled={loading}
                   style={{ width:"100%",marginBottom:22,marginTop:-6,padding:"14px",borderRadius:10,border:"1px solid var(--border)",background:"var(--card)",color:"var(--ink)",fontSize:14,fontWeight:500,fontFamily:"'Hanken Grotesk',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9 }}
                 >
-                  <IconCamera size={18}/> Snap it with your camera
+                  <IconCamera size={18}/> {t.app.snapCamera}
                 </button>
               )}
 
@@ -398,7 +402,7 @@ export default function TryOnApp() {
                             background: g.cat===c ? "var(--brand)":"transparent",
                             color:      g.cat===c ? "#fff":"var(--muted)",
                             border:     g.cat===c ? "1px solid var(--brand)":"1px solid var(--border)",
-                          }}>{c==="one-pieces"?"Full":c==="tops"?"Top":"Bottom"}</button>
+                          }}>{c==="one-pieces"?t.app.catFull:c==="tops"?t.app.catTop:t.app.catBottom}</button>
                         ))}
                       </div>
                     </div>
@@ -415,7 +419,7 @@ export default function TryOnApp() {
                     >
                       <div style={{ textAlign:"center",padding:14,pointerEvents:"none",color:"var(--muted)" }}>
                         <div className="up-float" style={{ display:"inline-flex",color:"var(--faint)",marginBottom:8 }}><IconUpload size={24}/></div>
-                        <p style={{ fontSize:13,color:"var(--ink)",fontWeight:500 }}>Add another</p>
+                        <p style={{ fontSize:13,color:"var(--ink)",fontWeight:500 }}>{t.app.addAnother}</p>
                       </div>
                     </div>
                   )}
@@ -424,18 +428,18 @@ export default function TryOnApp() {
 
               {/* …or paste a product link */}
               <div style={{ marginBottom:26 }}>
-                <p style={{ fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--faint)",marginBottom:10,fontWeight:500 }}>…or paste a product link</p>
+                <p style={{ fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--faint)",marginBottom:10,fontWeight:500 }}>{t.app.orPasteLink}</p>
                 <div className="linkbar">
                   <input
                     value={linkUrl}
                     onChange={e=>setLinkUrl(e.target.value)}
                     onKeyDown={e=>{ if(e.key==="Enter") useLink(); }}
-                    placeholder="https://… store page or image URL"
+                    placeholder={t.app.linkPlaceholder}
                     disabled={linkBusy || garments.length>=MAX_GARMENTS}
                   />
                   <button className="btn-dark" onClick={() => useLink()} disabled={linkBusy || !linkUrl.trim() || garments.length>=MAX_GARMENTS} style={{ padding:"0 18px",borderRadius:8,display:"flex",alignItems:"center",gap:7,fontSize:14 }}>
                     {linkBusy ? <div className="spinner" style={{ width:16,height:16 }}/> : <IconLinkChain size={16}/>}
-                    Add
+                    {t.app.add}
                   </button>
                 </div>
               </div>
@@ -450,32 +454,30 @@ export default function TryOnApp() {
 
               {credits <= 0 ? (
                 <a href={checkoutHref(uid, email)} className="btn-dark" style={{ width:"100%",padding:"16px",fontSize:15,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
-                  Out of credits — upgrade to Pro <IconArrowRight size={16}/>
+                  {t.app.outOfCreditsUpgrade} <IconArrowRight size={16}/>
                 </a>
               ) : (
                 <button className={`btn-dark${garments.length>0&&!loading?" btn-ready":""}`} onClick={generate} disabled={garments.length===0||loading}
                   style={{ width:"100%",padding:"16px",fontSize:15,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:10 }}>
                   {loading
-                    ? <><div className="spinner" style={{ width:18,height:18 }}/>{garments.length>1?`Layering ${garments.length} pieces…`:"Generating your look…"}</>
-                    : <><IconSpark size={18}/> {garments.length<=1?"Try it on · 1 credit":`Try on ${garments.length} pieces · ${garments.length} credits`}</>}
+                    ? <><div className="spinner" style={{ width:18,height:18 }}/>{garments.length>1?t.app.layeringPieces(garments.length):t.app.generatingLook}</>
+                    : <><IconSpark size={18}/> {garments.length<=1?t.app.tryItOn1:t.app.tryOnPieces(garments.length)}</>}
                 </button>
               )}
               <p style={{ textAlign:"center",fontSize:12,color:"var(--faint)",marginTop:12 }}>
-                {garments.length>1
-                  ? `~${garments.length*12}s · uses ${garments.length} credits (1 per piece)`
-                  : "Result in ~15 seconds · uses 1 credit"}
+                {garments.length>1 ? t.app.timingMulti(garments.length) : t.app.timingSingle}
               </p>
             </>
           ) : (
             /* No saved photo yet */
             <div style={{ border:"1px dashed var(--border)",borderRadius:16,padding:"56px 32px",textAlign:"center",background:"var(--card)" }}>
               <div style={{ display:"inline-flex",color:"var(--faint)",marginBottom:16 }}><IconUpload size={36}/></div>
-              <h3 className="serif" style={{ fontSize:24,fontWeight:600,color:"var(--ink)",marginBottom:10,letterSpacing:"-0.025em" }}>Set up your photo first</h3>
+              <h3 className="serif" style={{ fontSize:24,fontWeight:600,color:"var(--ink)",marginBottom:10,letterSpacing:"-0.025em" }}>{t.app.setupPhotoFirst}</h3>
               <p style={{ fontSize:14,color:"var(--muted)",fontWeight:300,marginBottom:26,maxWidth:320,marginInline:"auto",lineHeight:1.7 }}>
-                Add a full-length photo to your fit profile once — then every try-on only needs the garment.
+                {t.app.setupPhotoBody}
               </p>
               <Link href="/onboarding" className="btn-dark" style={{ padding:"12px 26px",fontSize:14,gap:8 }}>
-                Add your photo <IconArrowRight size={15}/>
+                {t.app.addYourPhoto} <IconArrowRight size={15}/>
               </Link>
             </div>
           )}
@@ -525,7 +527,7 @@ export default function TryOnApp() {
             {vc && (
               <div style={{ padding:"26px 30px",flex:1,overflowY:"auto" }}>
                 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14 }}>
-                  <span className={`tag ${vc.tag}`} style={{ fontSize:13,padding:"4px 14px" }}>{vc.label}</span>
+                  <span className={`tag ${vc.tag}`} style={{ fontSize:13,padding:"4px 14px" }}>{vcLabel}</span>
                   <span className="serif" style={{ fontSize:24,fontWeight:300,color:"rgba(26,22,17,0.25)",letterSpacing:"-0.02em" }}>{result.styleAdvice.score}/10</span>
                 </div>
 
@@ -540,8 +542,8 @@ export default function TryOnApp() {
                   className={saved ? "btn-outline" : "btn-dark"}
                   style={{ width:"100%",padding:"14px",fontSize:14,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",gap:9,marginBottom:20,...(saved?{color:"#1a7a2e",borderColor:"rgba(26,122,46,0.4)"}:{}) }}>
                   {saved
-                    ? <><IconCheck size={16}/> Saved to wardrobe</>
-                    : <><IconHeart size={17}/> Save to wardrobe</>}
+                    ? <><IconCheck size={16}/> {t.app.savedToWardrobe}</>
+                    : <><IconHeart size={17}/> {t.app.saveToWardrobe}</>}
                 </button>
 
                 <p style={{ fontSize:15,color:"rgba(26,22,17,0.78)",lineHeight:1.7,marginBottom:20,fontWeight:300 }}>{result.styleAdvice.summary}</p>
@@ -552,19 +554,19 @@ export default function TryOnApp() {
                       <span className="serif" style={{ fontSize:23,fontWeight:600,letterSpacing:"-0.02em" }}>{result.styleAdvice.recommendedSize}</span>
                     </div>
                     <div style={{ minWidth:0 }}>
-                      <div style={{ fontSize:11,letterSpacing:"0.09em",textTransform:"uppercase",color:"var(--faint)",marginBottom:4,fontWeight:600 }}>Your size</div>
-                      <div style={{ fontSize:14,color:"var(--muted)",lineHeight:1.55 }}>{result.styleAdvice.sizeReason || "Picked for your height & weight."}</div>
+                      <div style={{ fontSize:11,letterSpacing:"0.09em",textTransform:"uppercase",color:"var(--faint)",marginBottom:4,fontWeight:600 }}>{t.app.yourSize}</div>
+                      <div style={{ fontSize:14,color:"var(--muted)",lineHeight:1.55 }}>{result.styleAdvice.sizeReason || t.app.sizeReasonDefault}</div>
                     </div>
                   </div>
                 )}
 
                 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:18,marginBottom:20 }}>
                   <div>
-                    <p style={{ fontSize:11,letterSpacing:"0.08em",textTransform:"uppercase",color:"var(--faint)",marginBottom:9 }}>Works well</p>
+                    <p style={{ fontSize:11,letterSpacing:"0.08em",textTransform:"uppercase",color:"var(--faint)",marginBottom:9 }}>{t.app.worksWell}</p>
                     {result.styleAdvice.pros.map(p=><div key={p} style={{ fontSize:13,color:"var(--muted)",marginBottom:7,display:"flex",gap:8,alignItems:"flex-start" }}><span style={{ color:"#1a7a2e",marginTop:1 }}>+</span>{p}</div>)}
                   </div>
                   <div>
-                    <p style={{ fontSize:11,letterSpacing:"0.08em",textTransform:"uppercase",color:"var(--faint)",marginBottom:9 }}>Watch out</p>
+                    <p style={{ fontSize:11,letterSpacing:"0.08em",textTransform:"uppercase",color:"var(--faint)",marginBottom:9 }}>{t.app.watchOut}</p>
                     {result.styleAdvice.cons.map(c=><div key={c} style={{ fontSize:13,color:"var(--muted)",marginBottom:7,display:"flex",gap:8,alignItems:"flex-start" }}><span style={{ color:"#b71c1c",marginTop:1 }}>−</span>{c}</div>)}
                   </div>
                 </div>
@@ -575,19 +577,19 @@ export default function TryOnApp() {
                 </div>
 
                 <div>
-                  <p style={{ fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--faint)",marginBottom:10 }}>Share your look</p>
+                  <p style={{ fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--faint)",marginBottom:10 }}>{t.app.shareYourLook}</p>
                   <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
                     <button className="share-btn" onClick={()=>share("instagram")}><IconInstagram size={14}/> Instagram</button>
                     <button className="share-btn" onClick={()=>share("tiktok")}><IconTikTok size={14}/> TikTok</button>
                     <button className="share-btn" onClick={()=>share("whatsapp")}><IconWhatsApp size={14}/> WhatsApp</button>
-                    <button className="share-btn" onClick={()=>share("download")}><IconDownload size={15}/> Download</button>
-                    <button className="share-btn" onClick={()=>share("copy")}><IconLink size={15}/> Copy link</button>
+                    <button className="share-btn" onClick={()=>share("download")}><IconDownload size={15}/> {t.app.download}</button>
+                    <button className="share-btn" onClick={()=>share("copy")}><IconLink size={15}/> {t.app.copyLink}</button>
                   </div>
                 </div>
 
                 <button onClick={()=>{ setResult(null); setGarments([]); setError(null); }} className="btn-outline"
                   style={{ width:"100%",padding:"13px",fontSize:14,marginTop:20,borderRadius:8 }}>
-                  Start a new look
+                  {t.app.startNewLook}
                 </button>
               </div>
             )}

@@ -12,8 +12,10 @@ import {
 const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
 import { IconArrowRight, IconCheck } from "@/lib/icons";
 import { toast } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 
 export default function Profile() {
+  const { t } = useI18n();
   const [user, setUser]         = useState<User | null>(null);
   const [editing, setEditing]   = useState(false);
   const [name, setName]         = useState("");
@@ -26,25 +28,25 @@ export default function Profile() {
   useEffect(() => onAuthStateChanged(auth, (u) => {
     if (!u) return;
     setUser(u);
-    setName(u.displayName || u.email?.split("@")[0] || "User");
+    setName(u.displayName || u.email?.split("@")[0] || t.common.user);
     const p  = getProfile(u.uid);
     const wd = getWardrobe(u.uid);
-    const t  = getTryOns(u.uid);
+    const tn = getTryOns(u.uid);
     setProfile(p);
     setSettings(getSettings(u.uid));
     setPlan(getPlan(u.uid));
     setStats({
       wardrobe: wd.length,
-      tryons: t,
+      tryons: tn,
       favorites: wd.filter(i => i.fav).length,
-      left: Math.max(0, creditLimit(u.uid) - t),
+      left: Math.max(0, creditLimit(u.uid) - tn),
     });
   }), []);
 
   const saveName = async () => {
     if (user && name.trim()) await updateProfile(user, { displayName: name.trim() });
     setEditing(false);
-    toast("Name updated", "success");
+    toast(t.profile.nameUpdated, "success");
   };
 
   const toggleSetting = (k: keyof UserSettings) => {
@@ -56,37 +58,37 @@ export default function Profile() {
   };
 
   const checklist = [
-    { label: "Profile photo", done: !!profile?.photo },
-    { label: "Height",        done: !!profile?.heightCm },
-    { label: "Weight",        done: !!profile?.weightKg },
-    { label: "Style preset",  done: !!profile?.gender },
+    { label: t.profile.checkPhoto,  done: !!profile?.photo },
+    { label: t.profile.checkHeight, done: !!profile?.heightCm },
+    { label: t.profile.checkWeight, done: !!profile?.weightKg },
+    { label: t.profile.checkPreset, done: !!profile?.gender },
   ];
   const checkDone = checklist.filter(c => c.done).length;
 
   const memberSince = user?.metadata?.creationTime
-    ? new Date(user.metadata.creationTime).toLocaleDateString("en-US", { month: "long", year: "numeric" })
-    : "—";
+    ? new Date(user.metadata.creationTime).toLocaleDateString(t.profile.dateLocale, { month: "long", year: "numeric" })
+    : t.profile.memberSinceDash;
 
   const initials = name.slice(0, 1).toUpperCase();
 
   const statCards = [
-    { val: stats.tryons,    label: "Try-ons done",      accent: false },
-    { val: stats.wardrobe,  label: "Items in wardrobe", accent: false },
-    { val: stats.favorites, label: "Favorites saved",   accent: false },
-    { val: stats.left,      label: "Credits left",      accent: true  },
+    { val: stats.tryons,    label: t.profile.statTryons,    accent: false },
+    { val: stats.wardrobe,  label: t.profile.statWardrobe,  accent: false },
+    { val: stats.favorites, label: t.profile.statFavorites, accent: false },
+    { val: stats.left,      label: t.profile.statCredits,   accent: true  },
   ];
 
   const physical = [
-    { label: "Height", val: profile?.heightCm ? `${profile.heightCm} cm` : "—" },
-    { label: "Weight", val: profile?.weightKg ? `${profile.weightKg} kg` : "—" },
-    { label: "Shops",  val: profile?.gender ? ({female:"Womenswear",male:"Menswear",other:"All"} as Record<string,string>)[profile.gender] : "—" },
+    { label: t.profile.pHeight, val: profile?.heightCm ? `${profile.heightCm} cm` : t.profile.memberSinceDash },
+    { label: t.profile.pWeight, val: profile?.weightKg ? `${profile.weightKg} kg` : t.profile.memberSinceDash },
+    { label: t.profile.pShops,  val: profile?.gender ? ({female:t.profile.womenswear,male:t.profile.menswear,other:t.profile.allShops} as Record<string,string>)[profile.gender] : t.profile.memberSinceDash },
   ];
 
   return (
     <AppShell>
       <div className="page-in" style={{ padding:"48px 44px",maxWidth:880 }}>
-        <p style={{ fontSize:11,letterSpacing:"0.15em",textTransform:"uppercase",color:"var(--muted)",marginBottom:14,fontWeight:600 }}>Account</p>
-        <h1 className="serif" style={{ fontSize:46,fontWeight:600,letterSpacing:"-0.035em",color:"var(--ink)",marginBottom:32 }}>My profile</h1>
+        <p style={{ fontSize:11,letterSpacing:"0.15em",textTransform:"uppercase",color:"var(--muted)",marginBottom:14,fontWeight:600 }}>{t.profile.eyebrow}</p>
+        <h1 className="serif" style={{ fontSize:46,fontWeight:600,letterSpacing:"-0.035em",color:"var(--ink)",marginBottom:32 }}>{t.profile.title}</h1>
 
         {/* Identity card */}
         <div className="card" style={{ padding:"34px 32px",marginBottom:14,display:"flex",alignItems:"center",gap:26,position:"relative",overflow:"hidden" }}>
@@ -100,17 +102,17 @@ export default function Profile() {
             {editing ? (
               <div style={{ display:"flex",gap:10,alignItems:"center" }}>
                 <input className="input" value={name} onChange={e=>setName(e.target.value)} style={{ maxWidth:240 }}/>
-                <button className="btn-dark" onClick={saveName} style={{ padding:"10px 20px",fontSize:13 }}>Save</button>
+                <button className="btn-dark" onClick={saveName} style={{ padding:"10px 20px",fontSize:13 }}>{t.profile.save}</button>
               </div>
             ) : (
               <div style={{ display:"flex",alignItems:"center",gap:12 }}>
                 <h2 className="serif" style={{ fontSize:28,fontWeight:600,color:"var(--ink)",letterSpacing:"-0.025em" }}>{name}</h2>
-                <button onClick={()=>setEditing(true)} style={{ fontSize:12,color:"var(--muted)",background:"none",border:"none",cursor:"pointer",padding:0,textDecoration:"underline",textUnderlineOffset:3 }}>Edit</button>
+                <button onClick={()=>setEditing(true)} style={{ fontSize:12,color:"var(--muted)",background:"none",border:"none",cursor:"pointer",padding:0,textDecoration:"underline",textUnderlineOffset:3 }}>{t.profile.edit}</button>
               </div>
             )}
             <div style={{ display:"flex",alignItems:"center",gap:10,marginTop:12,flexWrap:"wrap" }}>
-              <span style={{ fontSize:12,fontWeight:600,letterSpacing:"0.04em",color:"var(--gold)",background:"rgba(176,138,62,0.1)",border:"1px solid rgba(176,138,62,0.3)",padding:"4px 11px",borderRadius:100 }}>FREE PLAN</span>
-              <span style={{ fontSize:13,color:"var(--muted)" }}>Member since {memberSince}</span>
+              <span style={{ fontSize:12,fontWeight:600,letterSpacing:"0.04em",color:"var(--gold)",background:"rgba(176,138,62,0.1)",border:"1px solid rgba(176,138,62,0.3)",padding:"4px 11px",borderRadius:100 }}>{t.profile.freePlanBadge}</span>
+              <span style={{ fontSize:13,color:"var(--muted)" }}>{t.profile.memberSince(memberSince)}</span>
             </div>
           </div>
         </div>
@@ -147,10 +149,10 @@ export default function Profile() {
           <div className="card" style={{ padding:"24px 28px",marginBottom:14 }}>
             <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,marginBottom:16 }}>
               <div>
-                <p className="serif" style={{ fontSize:18,fontWeight:600,color:"var(--ink)",letterSpacing:"-0.02em" }}>Finish your profile</p>
-                <p style={{ fontSize:13,color:"var(--muted)",marginTop:3,fontWeight:300 }}>{checkDone} of {checklist.length} done — better fits & sizing</p>
+                <p className="serif" style={{ fontSize:18,fontWeight:600,color:"var(--ink)",letterSpacing:"-0.02em" }}>{t.profile.finishProfile}</p>
+                <p style={{ fontSize:13,color:"var(--muted)",marginTop:3,fontWeight:300 }}>{t.profile.finishProgress(checkDone, checklist.length)}</p>
               </div>
-              <Link href="/onboarding" className="btn-dark" style={{ padding:"9px 18px",fontSize:13,gap:6 }}>Complete <IconArrowRight size={14}/></Link>
+              <Link href="/onboarding" className="btn-dark" style={{ padding:"9px 18px",fontSize:13,gap:6 }}>{t.profile.complete} <IconArrowRight size={14}/></Link>
             </div>
             <div style={{ height:6,borderRadius:100,background:"var(--border)",overflow:"hidden",marginBottom:16 }}>
               <div style={{ height:"100%",width:`${(checkDone/checklist.length)*100}%`,background:"var(--brand)",borderRadius:100,transition:"width 0.6s cubic-bezier(0.22,1,0.36,1)" }}/>
@@ -172,11 +174,11 @@ export default function Profile() {
         <div className="card" style={{ marginBottom:14,overflow:"hidden" }}>
           <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"26px 30px 22px" }}>
             <div>
-              <p className="serif" style={{ fontSize:19,fontWeight:600,color:"var(--ink)",letterSpacing:"-0.02em" }}>Fit profile</p>
-              <p style={{ fontSize:13,color:"var(--muted)",marginTop:4,fontWeight:300 }}>Renders every try-on — and personalizes your size</p>
+              <p className="serif" style={{ fontSize:19,fontWeight:600,color:"var(--ink)",letterSpacing:"-0.02em" }}>{t.profile.fitProfile}</p>
+              <p style={{ fontSize:13,color:"var(--muted)",marginTop:4,fontWeight:300 }}>{t.profile.fitProfileDesc}</p>
             </div>
             <Link href="/onboarding" style={{ fontSize:13,color:"var(--ink)",textDecoration:"none",display:"flex",alignItems:"center",gap:6,border:"1px solid var(--border)",padding:"9px 15px",borderRadius:6 }}>
-              Edit <IconArrowRight size={14}/>
+              {t.profile.edit2} <IconArrowRight size={14}/>
             </Link>
           </div>
           <div style={{ display:"flex",borderTop:"1px solid var(--border)" }}>
@@ -197,19 +199,19 @@ export default function Profile() {
         {/* Plan */}
         <div style={{ background:"var(--ink)",borderRadius:16,padding:"30px",marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between",gap:20,flexWrap:"wrap" }}>
           <div>
-            <p style={{ fontSize:11,color:"rgba(255,255,255,0.35)",letterSpacing:"0.1em",marginBottom:8,fontWeight:500 }}>CURRENT PLAN</p>
-            <p style={{ fontSize:22,fontWeight:500,color:"#fff",marginBottom:4 }}>{plan === "pro" ? "Pro" : "Free"}</p>
-            <p style={{ fontSize:14,color:"rgba(255,255,255,0.45)",fontWeight:300 }}>{plan === "pro" ? PRO_MONTHLY : FREE_MONTHLY} credits · {stats.left} left · 1 credit = 1 try-on</p>
+            <p style={{ fontSize:11,color:"rgba(255,255,255,0.35)",letterSpacing:"0.1em",marginBottom:8,fontWeight:500 }}>{t.profile.currentPlan}</p>
+            <p style={{ fontSize:22,fontWeight:500,color:"#fff",marginBottom:4 }}>{plan === "pro" ? t.profile.pro : t.profile.free}</p>
+            <p style={{ fontSize:14,color:"rgba(255,255,255,0.45)",fontWeight:300 }}>{t.profile.planSummary(plan === "pro" ? PRO_MONTHLY : FREE_MONTHLY, stats.left)}</p>
           </div>
           {plan === "pro" ? (
             <span style={{ display:"inline-flex",alignItems:"center",gap:8,background:"rgba(176,138,62,0.18)",color:"#FFD9A8",border:"1px solid rgba(176,138,62,0.4)",borderRadius:100,padding:"10px 20px",fontSize:13,fontWeight:600,letterSpacing:"0.04em" }}>
-              ★ Pro active
+              {t.profile.proActive}
             </span>
           ) : (
             <button
               onClick={()=>setShowPro(true)}
               style={{ background:"#fff",color:"var(--ink)",borderRadius:4,padding:"12px 26px",fontSize:14,fontWeight:500,border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:8,fontFamily:"'Hanken Grotesk',sans-serif" }}>
-              See Pro <IconArrowRight size={15}/>
+              {t.profile.seePro} <IconArrowRight size={15}/>
             </button>
           )}
         </div>
@@ -224,9 +226,9 @@ export default function Profile() {
         {/* Settings */}
         <div className="card" style={{ overflow:"hidden" }}>
           {([
-            { k:"notifications" as const, label:"Email notifications", sub:"Updates and styling tips" },
-            { k:"improveAI" as const,     label:"Improve try-on quality", sub:"Allow anonymized model training" },
-            { k:"publicProfile" as const, label:"Public profile", sub:"Let others see your looks" },
+            { k:"notifications" as const, label:t.profile.settingsNotif, sub:t.profile.settingsNotifSub },
+            { k:"improveAI" as const,     label:t.profile.settingsImprove, sub:t.profile.settingsImproveSub },
+            { k:"publicProfile" as const, label:t.profile.settingsPublic, sub:t.profile.settingsPublicSub },
           ]).map((s,i,arr) => (
             <div key={s.label} style={{ padding:"18px 24px",borderBottom:i<arr.length-1?"1px solid var(--border)":undefined,display:"flex",alignItems:"center",justifyContent:"space-between" }}>
               <div>
@@ -241,7 +243,7 @@ export default function Profile() {
         <button
           onClick={async()=>{ await signOut(auth); window.location.href="/"; }}
           style={{ marginTop:24,fontSize:14,color:"var(--muted)",background:"none",border:"none",cursor:"pointer",padding:0 }}>
-          Sign out
+          {t.profile.signOut}
         </button>
       </div>
     </AppShell>
@@ -250,16 +252,9 @@ export default function Profile() {
 
 /* Pro details — what you unlock, vs the free plan, with the checkout CTA. */
 function ProModal({ onClose, checkoutHref }: { onClose: () => void; checkoutHref: string }) {
+  const { t } = useI18n();
   // [label, free value, pro value, highlighted = a real upgrade]
-  const ROWS: [string, string, string, boolean][] = [
-    ["Credits", `${FREE_MONTHLY} to start`, `${PRO_MONTHLY} / month — 10×`, true],
-    ["AI style verdict", "Yes", "Yes", false],
-    ["Wardrobe", "Up to 20 items", "Unlimited", true],
-    ["Outfit battles", "Yes", "Yes", false],
-    ["Share to socials", "Yes", "Yes", false],
-    ["Calendar styling", "—", "Plan looks by date", true],
-    ["AI shop-discovery agent", "—", "Finds pieces to buy", true],
-  ];
+  const ROWS = t.profile.proRows(FREE_MONTHLY, PRO_MONTHLY);
   return (
     <div
       onClick={onClose}
@@ -267,18 +262,18 @@ function ProModal({ onClose, checkoutHref }: { onClose: () => void; checkoutHref
       <div
         onClick={(e)=>e.stopPropagation()}
         style={{ width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",background:"var(--ink)",borderRadius:18,padding:"28px 26px",position:"relative",boxShadow:"0 30px 80px rgba(0,0,0,0.4)" }}>
-        <button onClick={onClose} aria-label="Close" style={{ position:"absolute",top:16,right:16,width:30,height:30,borderRadius:100,border:"1px solid rgba(255,255,255,0.18)",background:"transparent",color:"rgba(255,255,255,0.7)",cursor:"pointer",fontSize:17,lineHeight:1,padding:0 }}>×</button>
+        <button onClick={onClose} aria-label={t.common.close} style={{ position:"absolute",top:16,right:16,width:30,height:30,borderRadius:100,border:"1px solid rgba(255,255,255,0.18)",background:"transparent",color:"rgba(255,255,255,0.7)",cursor:"pointer",fontSize:17,lineHeight:1,padding:0 }}>×</button>
 
-        <p style={{ fontSize:11,letterSpacing:"0.14em",color:"#FFD9A8",fontWeight:600,marginBottom:8 }}>WEARIT PRO</p>
-        <h2 className="serif" style={{ fontSize:30,fontWeight:600,color:"#fff",letterSpacing:"-0.03em",marginBottom:6 }}>Try on more, decide faster</h2>
+        <p style={{ fontSize:11,letterSpacing:"0.14em",color:"#FFD9A8",fontWeight:600,marginBottom:8 }}>{t.profile.proEyebrow}</p>
+        <h2 className="serif" style={{ fontSize:30,fontWeight:600,color:"#fff",letterSpacing:"-0.03em",marginBottom:6 }}>{t.profile.proTitle}</h2>
         <p style={{ fontSize:14,color:"rgba(255,255,255,0.5)",fontWeight:300,marginBottom:22 }}>
-          <span style={{ fontSize:26,color:"#fff",fontWeight:500 }}>$13.99</span> / month · cancel anytime
+          <span style={{ fontSize:26,color:"#fff",fontWeight:500 }}>{t.profile.proPrice}</span>{t.profile.proPriceSuffix}
         </p>
 
         {/* Comparison */}
         <div style={{ border:"1px solid rgba(255,255,255,0.12)",borderRadius:12,overflow:"hidden",marginBottom:22 }}>
           <div style={{ display:"grid",gridTemplateColumns:"1.3fr 0.9fr 1.1fr",padding:"10px 14px",fontSize:11,letterSpacing:"0.06em",color:"rgba(255,255,255,0.4)",borderBottom:"1px solid rgba(255,255,255,0.1)",fontWeight:600 }}>
-            <span></span><span>FREE</span><span style={{ color:"#FFD9A8" }}>PRO</span>
+            <span></span><span>{t.profile.proFree}</span><span style={{ color:"#FFD9A8" }}>{t.profile.proPro}</span>
           </div>
           {ROWS.map(([label, free, pro, hot], i) => (
             <div key={label} style={{ display:"grid",gridTemplateColumns:"1.3fr 0.9fr 1.1fr",alignItems:"center",padding:"11px 14px",borderBottom:i<ROWS.length-1?"1px solid rgba(255,255,255,0.07)":undefined,background:hot?"rgba(176,138,62,0.08)":undefined }}>
@@ -293,10 +288,10 @@ function ProModal({ onClose, checkoutHref }: { onClose: () => void; checkoutHref
 
         <a href={checkoutHref}
           style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"#fff",color:"var(--ink)",borderRadius:8,padding:"15px",fontSize:15,fontWeight:600,textDecoration:"none" }}>
-          Upgrade to Pro <IconArrowRight size={16}/>
+          {t.profile.upgradeToPro} <IconArrowRight size={16}/>
         </a>
         <button onClick={onClose} style={{ width:"100%",marginTop:12,background:"none",border:"none",color:"rgba(255,255,255,0.45)",fontSize:13,cursor:"pointer",fontFamily:"'Hanken Grotesk',sans-serif" }}>
-          Maybe later
+          {t.profile.maybeLater}
         </button>
       </div>
     </div>

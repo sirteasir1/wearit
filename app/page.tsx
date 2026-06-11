@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useI18n, LangSwitch } from "@/lib/i18n";
 
 /* ── scroll reveal ── */
 function useReveal() {
@@ -97,56 +98,16 @@ function ShuffleWord({ words = SHUFFLE_WORDS, interval = 2800 }: { words?: strin
   );
 }
 
-const TESTIMONIALS = [
-  {
-    quote: "I return three out of five things I order online. Two months with Wearit: zero returns. The AI is annoyingly right.",
-    name: "Alina M.",
-    detail: "27 · Moscow",
-    look: "tried 41 looks",
-    initial: "A",
-    gradient: "linear-gradient(135deg,#C9A84C,#8B6914)",
-  },
-  {
-    quote: "Tried on a blazer I'd been staring at for weeks. The shoulder seam was off — I'd never have known from the photo. Bullet dodged.",
-    name: "Sofia K.",
-    detail: "24 · London",
-    look: "tried 28 looks",
-    initial: "S",
-    gradient: "linear-gradient(135deg,#7A9E7E,#4A6A60)",
-  },
-  {
-    quote: "My wardrobe finally makes sense. Everything scored, everything organized. I stopped buying things I'd never actually wear.",
-    name: "Maria T.",
-    detail: "31 · Berlin",
-    look: "saved 63 items",
-    initial: "M",
-    gradient: "linear-gradient(135deg,#8B5E6E,#5C3347)",
-  },
-  {
-    quote: "I work in fashion. Product photos lie — the lighting, the styling, the model's body. This shows me the truth before I spend a cent.",
-    name: "Emma P.",
-    detail: "28 · Paris",
-    look: "tried 112 looks",
-    initial: "E",
-    gradient: "linear-gradient(135deg,#6B7A8D,#3D4A5C)",
-  },
-  {
-    quote: "Scrolled past the same jacket for months. Five seconds in Wearit told me it would look incredible. It does.",
-    name: "Zara L.",
-    detail: "26 · Stockholm",
-    look: "tried 37 looks",
-    initial: "Z",
-    gradient: "linear-gradient(135deg,#A07B5A,#6B4A2A)",
-  },
-  {
-    quote: "Bought a dress for my sister's wedding after seeing it on myself first. Fit perfectly. First time I've felt calm about shopping online.",
-    name: "Natasha D.",
-    detail: "29 · New York",
-    look: "tried 54 looks",
-    initial: "N",
-    gradient: "linear-gradient(135deg,#9B8EA0,#6B5A70)",
-  },
+/* Visual styling for testimonial cards — paired by index with the localized copy. */
+const TESTIMONIAL_GRADIENTS = [
+  "linear-gradient(135deg,#C9A84C,#8B6914)",
+  "linear-gradient(135deg,#7A9E7E,#4A6A60)",
+  "linear-gradient(135deg,#8B5E6E,#5C3347)",
+  "linear-gradient(135deg,#6B7A8D,#3D4A5C)",
+  "linear-gradient(135deg,#A07B5A,#6B4A2A)",
+  "linear-gradient(135deg,#9B8EA0,#6B5A70)",
 ];
+type Testimonial = { quote: string; name: string; detail: string; look: string; initial: string; gradient: string };
 
 /* Minimal SVG icons */
 const IconDiamond = () => (
@@ -216,16 +177,16 @@ const IconMail = () => (
 );
 
 /* ── testimonials — dual-row auto-scrolling marquee ── */
-function TCard({ t }: { t: typeof TESTIMONIALS[number] }) {
+function TCard({ item }: { item: Testimonial }) {
   return (
     <figure className="tcard">
       <div className="tcard-stars" aria-label="5 out of 5">{[0,1,2,3,4].map(s => <Star key={s} />)}</div>
-      <blockquote className="tcard-quote">&ldquo;{t.quote}&rdquo;</blockquote>
+      <blockquote className="tcard-quote">&ldquo;{item.quote}&rdquo;</blockquote>
       <figcaption className="tcard-foot">
-        <span className="tcard-avatar" style={{ background: t.gradient }}>{t.initial}</span>
+        <span className="tcard-avatar" style={{ background: item.gradient }}>{item.initial}</span>
         <span className="tcard-meta">
-          <span className="tcard-name">{t.name}</span>
-          <span className="tcard-detail">{t.detail} · {t.look}</span>
+          <span className="tcard-name">{item.name}</span>
+          <span className="tcard-detail">{item.detail} · {item.look}</span>
         </span>
       </figcaption>
     </figure>
@@ -233,25 +194,29 @@ function TCard({ t }: { t: typeof TESTIMONIALS[number] }) {
 }
 
 function Testimonials() {
-  const rowA = TESTIMONIALS;
-  const rowB = [...TESTIMONIALS].reverse();
+  const { t } = useI18n();
+  const items: Testimonial[] = t.landing.testimonials.items.map((it, i) => ({
+    ...it, initial: it.name.slice(0, 1), gradient: TESTIMONIAL_GRADIENTS[i % TESTIMONIAL_GRADIENTS.length],
+  }));
+  const rowA = items;
+  const rowB = [...items].reverse();
   return (
     <section className="sec-testimonials">
       <div className="sec-inner" style={{ textAlign: "center", marginBottom: 56 }}>
         <div className="reveal reveal-up">
-          <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 16, fontWeight: 600 }}>Loved by 10,000+ closets</p>
+          <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 16, fontWeight: 600 }}>{t.landing.testimonials.eyebrow}</p>
           <h2 className="serif" style={{ fontSize: "clamp(32px,4vw,56px)", fontWeight: 500, letterSpacing: "-0.035em", lineHeight: 1.04, color: "var(--ink)" }}>
-            People who<br /><em style={{ fontStyle: "italic" }}>hate returns</em>
+            {t.landing.testimonials.titleA}<br /><em style={{ fontStyle: "italic" }}>{t.landing.testimonials.titleB}</em>
           </h2>
         </div>
       </div>
 
       <div className="tmq">
         <div className="tmq-row">
-          {[...rowA, ...rowA].map((t, i) => <TCard key={`a${i}`} t={t} />)}
+          {[...rowA, ...rowA].map((it, i) => <TCard key={`a${i}`} item={it} />)}
         </div>
         <div className="tmq-row tmq-row-rev">
-          {[...rowB, ...rowB].map((t, i) => <TCard key={`b${i}`} t={t} />)}
+          {[...rowB, ...rowB].map((it, i) => <TCard key={`b${i}`} item={it} />)}
         </div>
       </div>
     </section>
@@ -259,37 +224,15 @@ function Testimonials() {
 }
 
 /* ── interactive "How it works" stepper ── */
-const HOW_STEPS = [
-  {
-    n: "01",
-    short: "Your photo",
-    title: "Upload your photo",
-    body: "A single full-length photo of yourself. The AI reads your proportions automatically — no measurements, no fuss. You set this up once.",
-    img: "/images/step-1-phone.jpg",
-    pos: "center top",
-    caption: "Your fit profile",
-  },
-  {
-    n: "02",
-    short: "The garment",
-    title: "Add any garment",
-    body: "Any clothing image from any store — Zara, ASOS, Nike, a screenshot from Instagram. Paste it in. No restrictions, no catalog.",
-    img: "/images/step-2-phone.jpg",
-    pos: "center top",
-    caption: "Any store, any item",
-  },
-  {
-    n: "03",
-    short: "See the look",
-    title: "See yourself in it",
-    body: "A photorealistic result in under 15 seconds — on your body, not a model's — with an honest AI verdict: buy, skip, or maybe.",
-    img: "/images/step-3-phone.jpg",
-    pos: "center top",
-    caption: "Photoreal in ~15s",
-  },
+const HOW_MEDIA = [
+  { n: "01", img: "/images/step-1-phone.jpg", pos: "center top" },
+  { n: "02", img: "/images/step-2-phone.jpg", pos: "center top" },
+  { n: "03", img: "/images/step-3-phone.jpg", pos: "center top" },
 ];
 
 function HowItWorks() {
+  const { t } = useI18n();
+  const HOW_STEPS = t.landing.how.steps.map((st, i) => ({ ...st, ...HOW_MEDIA[i] }));
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const n = HOW_STEPS.length;
@@ -306,10 +249,10 @@ function HowItWorks() {
     <section id="how" className="sec-how">
       <div className="sec-inner">
         <div className="reveal reveal-up" style={{ marginBottom: 8 }}>
-          <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 16, fontWeight: 600 }}>How it works</p>
+          <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 16, fontWeight: 600 }}>{t.landing.how.eyebrow}</p>
           <h2 className="serif" style={{ fontSize: "clamp(38px,5vw,68px)", fontWeight: 500, letterSpacing: "-0.035em", lineHeight: 1.02, color: "var(--ink)", maxWidth: 600 }}>
-            Three steps,<br />
-            <em style={{ fontStyle: "italic" }}>one perfect look</em>
+            {t.landing.how.titleA}<br />
+            <em style={{ fontStyle: "italic" }}>{t.landing.how.titleB}</em>
           </h2>
         </div>
 
@@ -350,7 +293,7 @@ function HowItWorks() {
               <p style={{ fontSize: 16, color: "var(--muted)", lineHeight: 1.8, fontWeight: 300, maxWidth: 420 }}>{s.body}</p>
               <div className="how-progress-dots">
                 {HOW_STEPS.map((_, i) => (
-                  <button key={i} className={`how-dot${i === active ? " on" : ""}`} onClick={() => setActive(i)} aria-label={`Step ${i + 1}`} />
+                  <button key={i} className={`how-dot${i === active ? " on" : ""}`} onClick={() => setActive(i)} aria-label={t.landing.how.stepAria(i + 1)} />
                 ))}
               </div>
             </div>
@@ -362,46 +305,21 @@ function HowItWorks() {
 }
 
 /* ── FAQ accordion ── */
-const FAQS = [
-  {
-    q: "Is it really my body in the result?",
-    a: "Yes. We render the garment onto the full-length photo from your fit profile — your proportions, your build — not a stock model. That's the whole point: you see how it sits on you.",
-  },
-  {
-    q: "What clothes can I try on?",
-    a: "Anything you have an image of — Zara, ASOS, Nike, a screenshot from an Instagram post or a friend's link. There's no catalog and no restrictions; just drop in the photo of the garment.",
-  },
-  {
-    q: "How long does a try-on take?",
-    a: "Around 15 seconds. You upload your photo once during setup, then every future try-on only needs the garment — so it's a few taps each time.",
-  },
-  {
-    q: "Is my photo private?",
-    a: "Your photo is stored only for rendering your own try-ons and is never shown to anyone else or used for ads. You can replace or remove it any time from your profile.",
-  },
-  {
-    q: "How accurate is the fit and the verdict?",
-    a: "The AI reads proportions and how a garment drapes to flag fit issues — tight shoulders, odd length, a clashing silhouette — and gives an honest Buy / Maybe / Skip with the reasoning, plus a styling tip.",
-  },
-  {
-    q: "What do I get for free vs Pro?",
-    a: "Everyone starts with 4 free credits — 1 credit is 1 try-on generation. Free also includes the AI verdict and a 20-item wardrobe. Pro ($13.99/mo) gives you 40 credits a month — 10× the free plan — an unlimited wardrobe, calendar styling and the AI shop-discovery agent.",
-  },
-];
-
 function FAQ() {
+  const { t } = useI18n();
+  const FAQS = t.landing.faq.items;
   const [open, setOpen] = useState<number | null>(0);
   return (
     <section id="faq" className="sec-faq">
       <div className="sec-inner faq-grid">
         <div className="faq-head reveal reveal-up">
-          <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 16, fontWeight: 600 }}>FAQ</p>
+          <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 16, fontWeight: 600 }}>{t.landing.faq.eyebrow}</p>
           <h2 className="serif" style={{ fontSize: "clamp(32px,4vw,56px)", fontWeight: 500, letterSpacing: "-0.035em", lineHeight: 1.04, color: "var(--ink)" }}>
-            Questions,<br /><em style={{ fontStyle: "italic" }}>answered</em>
+            {t.landing.faq.titleA}<br /><em style={{ fontStyle: "italic" }}>{t.landing.faq.titleB}</em>
           </h2>
           <p style={{ fontSize: 15, color: "var(--muted)", lineHeight: 1.7, fontWeight: 300, marginTop: 22, maxWidth: 300 }}>
-            Everything you need to know before your first try-on. Still curious?{" "}
-            <a href="mailto:rgalbeke@gmail.com" style={{ color: "var(--ink)", textDecoration: "underline", textUnderlineOffset: 3 }}>Email us</a>.
+            {t.landing.faq.lead}
+            <a href="mailto:rgalbeke@gmail.com" style={{ color: "var(--ink)", textDecoration: "underline", textUnderlineOffset: 3 }}>{t.landing.faq.emailUs}</a>.
           </p>
         </div>
 
@@ -427,6 +345,7 @@ function FAQ() {
 }
 
 export default function Landing() {
+  const { t } = useI18n();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mouseX,   setMouseX]   = useState(0);
@@ -471,11 +390,12 @@ export default function Landing() {
         </Link>
 
         <div className="nav-links">
-          <a href="#how"       className="nav-link">How it works</a>
-          <a href="#pricing"   className="nav-link">Pricing</a>
-          <Link href="/signin" className="nav-link nav-link-dark">Sign in</Link>
+          <a href="#how"       className="nav-link">{t.landing.nav.how}</a>
+          <a href="#pricing"   className="nav-link">{t.landing.nav.pricing}</a>
+          <Link href="/signin" className="nav-link nav-link-dark">{t.landing.nav.signIn}</Link>
+          <LangSwitch />
           <Link href="/signup" className="btn-dark nav-cta" style={{ padding: "9px 22px", fontSize: 13 }}>
-            Get started
+            {t.landing.nav.getStarted}
           </Link>
         </div>
 
@@ -494,16 +414,17 @@ export default function Landing() {
 
       {menuOpen && (
         <div className="mobile-menu">
-          <a href="#how"     className="mobile-menu-link" onClick={() => setMenuOpen(false)}>How it works</a>
-          <a href="#pricing" className="mobile-menu-link" onClick={() => setMenuOpen(false)}>Pricing</a>
-          <Link href="/signin" className="mobile-menu-link" onClick={() => setMenuOpen(false)}>Sign in</Link>
+          <a href="#how"     className="mobile-menu-link" onClick={() => setMenuOpen(false)}>{t.landing.nav.how}</a>
+          <a href="#pricing" className="mobile-menu-link" onClick={() => setMenuOpen(false)}>{t.landing.nav.pricing}</a>
+          <Link href="/signin" className="mobile-menu-link" onClick={() => setMenuOpen(false)}>{t.landing.nav.signIn}</Link>
+          <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}><LangSwitch /></div>
           <Link
             href="/signup"
             className="btn-dark"
             style={{ marginTop: 16, padding: "14px", fontSize: 15, width: "100%", justifyContent: "center" }}
             onClick={() => setMenuOpen(false)}
           >
-            Get started
+            {t.landing.nav.getStarted}
           </Link>
         </div>
       )}
@@ -528,7 +449,7 @@ export default function Landing() {
           <div className="anim-up" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 28 }}>
             <div style={{ width: 20, height: 1, background: "rgba(255,255,255,0.35)" }} />
             <span style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>
-              Virtual try-on
+              {t.landing.hero.eyebrow}
             </span>
             <div style={{ width: 20, height: 1, background: "rgba(255,255,255,0.35)" }} />
           </div>
@@ -545,8 +466,8 @@ export default function Landing() {
                 color: "#fff",
               }}
             >
-              Try before<br />
-              <em style={{ fontStyle: "italic", fontWeight: 300 }}>you <ShuffleWord /></em>
+              {t.landing.hero.titleLine1}<br />
+              <em style={{ fontStyle: "italic", fontWeight: 300 }}>{t.landing.hero.titleYou} <ShuffleWord words={t.landing.hero.shuffle} /></em>
             </h1>
           </div>
 
@@ -563,16 +484,16 @@ export default function Landing() {
               textShadow: "0 1px 20px rgba(0,0,0,0.3)",
             }}
           >
-            Upload your photo and any outfit. See exactly how it looks on your body — in seconds.
+            {t.landing.hero.subtitle}
           </p>
 
           <div className="anim-up-3" style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/signup" className="btn-light" style={{ padding: "14px 36px", fontSize: 14 }}>Try for free</Link>
-            <a     href="#how"   className="btn-ghost" style={{ padding: "14px 36px", fontSize: 14 }}>How it works</a>
+            <Link href="/signup" className="btn-light" style={{ padding: "14px 36px", fontSize: 14 }}>{t.landing.hero.tryFree}</Link>
+            <a     href="#how"   className="btn-ghost" style={{ padding: "14px 36px", fontSize: 14 }}>{t.landing.hero.how}</a>
           </div>
 
           <div className="anim-up-4" style={{ marginTop: 56 }}>
-            <a href="#how" className="scroll-cue" aria-label="Scroll down">
+            <a href="#how" className="scroll-cue" aria-label={t.landing.hero.scrollDown}>
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M1.5 3.5L6 8.5L10.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -583,8 +504,8 @@ export default function Landing() {
         {/* Stats row */}
         <div className="anim-up-4 hero-stats">
           {[
-            { val: 33, suffix: "%", sub: "of online clothes are returned" },
-            { val: 15, suffix: "s",  sub: "average try-on generation" },
+            { val: 33, suffix: "%", sub: t.landing.hero.stat1 },
+            { val: 15, suffix: "s",  sub: t.landing.hero.stat2 },
           ].map(s => (
             <div key={s.sub} style={{ textAlign: "center" }}>
               <div className="serif" style={{ fontSize: "clamp(28px,3.6vw,38px)", color: "#fff", letterSpacing: "-0.03em", fontWeight: 300, textShadow: "0 2px 24px rgba(0,0,0,0.35)" }}>
@@ -639,19 +560,19 @@ export default function Landing() {
       <section className="sec-features">
         <div className="sec-inner">
           <div className="reveal reveal-up" style={{ textAlign: "center", marginBottom: 64 }}>
-            <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 16, fontWeight: 500 }}>Features</p>
+            <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 16, fontWeight: 500 }}>{t.landing.features.eyebrow}</p>
             <h2 className="serif" style={{ fontSize: "clamp(32px,4.2vw,56px)", fontWeight: 500, letterSpacing: "-0.035em", color: "var(--ink)" }}>
-              More than a try-on
+              {t.landing.features.title}
             </h2>
           </div>
           <div className="stagger features-grid reveal reveal-scale" style={{ opacity: 1, transform: "none" }}>
             {[
-              { Icon: IconDiamond,  title: "AI Verdict",        body: "Buy, Skip, or Maybe — with specific reasons and a personal styling tip.",       soon: false },
-              { Icon: IconRack,     title: "Virtual wardrobe",  body: "Save items, build outfits, see your whole closet in one curated place.",        soon: false },
-              { Icon: IconHeart,    title: "Favorites",         body: "Save looks you love. Share them with friends instantly.",                        soon: false },
-              { Icon: IconArrow,    title: "Share to socials",  body: "Post your try-on to Instagram, TikTok, or send a direct link.",                 soon: false },
-              { Icon: IconCalendar, title: "Calendar styling",  body: "Connect your calendar. AI picks your outfit before every meeting.",             soon: true  },
-              { Icon: IconSearch,   title: "Shop discovery",    body: "An agent finds items on any marketplace and tries them on you.",                 soon: true  },
+              { Icon: IconDiamond,  ...t.landing.features.items[0], soon: false },
+              { Icon: IconRack,     ...t.landing.features.items[1], soon: false },
+              { Icon: IconHeart,    ...t.landing.features.items[2], soon: false },
+              { Icon: IconArrow,    ...t.landing.features.items[3], soon: false },
+              { Icon: IconCalendar, ...t.landing.features.items[4], soon: true  },
+              { Icon: IconSearch,   ...t.landing.features.items[5], soon: true  },
             ].map((f, i) => (
               <div key={f.title} className={`reveal reveal-up feature-item${i === 0 || i === 5 ? " feat-wide" : ""}`} style={{ transitionDelay: `${i * 0.07}s` }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
@@ -662,7 +583,7 @@ export default function Landing() {
                   <h4 className="serif" style={{ fontSize: 20, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em" }}>{f.title}</h4>
                   {f.soon && (
                     <span style={{ fontSize: 10, letterSpacing: "0.08em", color: "var(--faint)", border: "1px solid var(--border)", padding: "2px 8px", borderRadius: 100 }}>
-                      Soon
+                      {t.landing.features.soon}
                     </span>
                   )}
                 </div>
@@ -677,9 +598,9 @@ export default function Landing() {
       <section className="sec-stats">
         <div className="stagger stats-grid sec-inner" style={{ maxWidth: 960 }}>
           {[
-            { val: 30, suf: "%",  label: "of online orders are returned" },
-            { val: 15, suf: "s",  label: "average try-on generation time" },
-            { val: 10, suf: "K+", label: "outfits tried on every day" },
+            { val: 30, suf: "%",  label: t.landing.stats.s1 },
+            { val: 15, suf: "s",  label: t.landing.stats.s2 },
+            { val: 10, suf: "K+", label: t.landing.stats.s3 },
           ].map((s, i) => (
             <div key={s.label} className="reveal reveal-up stat-item">
               <div
@@ -698,20 +619,20 @@ export default function Landing() {
       <section id="pricing" className="sec-pricing">
         <div className="sec-inner-sm">
           <div className="reveal reveal-up" style={{ textAlign: "center", marginBottom: 60 }}>
-            <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 16, fontWeight: 500 }}>Pricing</p>
+            <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 16, fontWeight: 500 }}>{t.landing.pricing.eyebrow}</p>
             <h2 className="serif" style={{ fontSize: "clamp(32px,4.2vw,56px)", fontWeight: 500, letterSpacing: "-0.035em", marginBottom: 12, color: "var(--ink)" }}>
-              Simple pricing
+              {t.landing.pricing.title}
             </h2>
-            <p style={{ color: "var(--muted)", fontSize: 15, fontWeight: 300 }}>Start free. No card needed.</p>
+            <p style={{ color: "var(--muted)", fontSize: 15, fontWeight: 300 }}>{t.landing.pricing.subtitle}</p>
           </div>
 
           <div className="reveal reveal-up pricing-grid">
             {/* Free */}
             <div className="card" style={{ padding: "48px 44px" }}>
-              <p style={{ fontSize: 11, color: "var(--faint)", marginBottom: 24, letterSpacing: "0.12em", fontWeight: 500 }}>FREE</p>
+              <p style={{ fontSize: 11, color: "var(--faint)", marginBottom: 24, letterSpacing: "0.12em", fontWeight: 500 }}>{t.landing.pricing.free}</p>
               <div className="serif" style={{ fontSize: 56, letterSpacing: "-0.04em", color: "var(--ink)", marginBottom: 32, fontWeight: 300, lineHeight: 1 }}>$0</div>
               <div style={{ borderTop: "1px solid var(--border)", paddingTop: 28, marginBottom: 32 }}>
-                {["4 credits to start (1 credit = 1 try-on)", "AI style verdict", "Wardrobe (up to 20 items)", "Share to socials"].map(f => (
+                {t.landing.pricing.freeFeatures.map(f => (
                   <div key={f} style={{ display: "flex", gap: 12, marginBottom: 14, fontSize: 14, color: "var(--muted)", fontWeight: 300, alignItems: "flex-start" }}>
                     <span style={{ color: "var(--ink)", marginTop: 1 }}>—</span>
                     {f}
@@ -719,7 +640,7 @@ export default function Landing() {
                 ))}
               </div>
               <Link href="/signup" className="btn-outline" style={{ width: "100%", padding: "13px", fontSize: 14 }}>
-                Get started free
+                {t.landing.pricing.getStartedFree}
               </Link>
             </div>
 
@@ -749,20 +670,20 @@ export default function Landing() {
               <div className="card pro-card" onClick={() => setShowPro(true)} style={{ padding: "48px 44px", background: "var(--ink)", borderColor: "transparent", cursor: "pointer" }}>
               <div className="pro-content">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: "0.12em", fontWeight: 500 }}>PRO</p>
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: "0.12em", fontWeight: 500 }}>{t.landing.pricing.pro}</p>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "#FFD9A8", border: "1px solid rgba(255,150,60,0.4)", background: "rgba(255,110,35,0.14)", padding: "3px 11px", borderRadius: 100, letterSpacing: "0.06em" }}>
                     <svg width="11" height="13" viewBox="0 0 11 13" fill="none">
                       <path d="M5.5 0.5C6 3 8.2 3.6 8.2 6.4c0 1-.5 2-.5 2s1.3-.4 1.6-1.9c.8 1 1.2 2.2 1.2 3.3C10.5 11.4 8.3 12.5 5.5 12.5S0.5 11.4.5 9.8C.5 7.4 2.8 6 3.2 3.4 3.9 4 4.2 4.8 4.2 4.8S3.4 2.8 5.5 0.5z" fill="#FF8A2A"/>
                     </svg>
-                    Most popular
+                    {t.landing.pricing.mostPopular}
                   </span>
                 </div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 32 }}>
                   <span className="serif" style={{ fontSize: 56, letterSpacing: "-0.04em", color: "#fff", fontWeight: 300, lineHeight: 1 }}>$13</span>
-                  <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 16, fontWeight: 300 }}>.99 / mo</span>
+                  <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 16, fontWeight: 300 }}>{t.landing.pricing.perMo}</span>
                 </div>
                 <div style={{ borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 28, marginBottom: 32 }}>
-                  {["40 credits / month — 10× the free plan", "AI style verdict", "Unlimited wardrobe", "Share to socials", "Calendar integration", "AI shop-discovery agent"].map(f => (
+                  {t.landing.pricing.proFeatures.map(f => (
                     <div key={f} style={{ display: "flex", gap: 12, marginBottom: 14, fontSize: 14, color: "rgba(255,255,255,0.62)", fontWeight: 300, alignItems: "flex-start" }}>
                       <span style={{ color: "#FF9A4A", marginTop: 1 }}>—</span>
                       {f}
@@ -770,9 +691,9 @@ export default function Landing() {
                   ))}
                 </div>
                 <Link href="/signup" className="btn-pro" onClick={(e) => e.stopPropagation()}>
-                  Start free trial
+                  {t.landing.pricing.startTrial}
                 </Link>
-                <span className="pro-tap-hint">Tap the card to compare Free vs Pro <IconArrow /></span>
+                <span className="pro-tap-hint">{t.landing.pricing.tapHint} <IconArrow /></span>
               </div>
               </div>
             </div>
@@ -788,7 +709,7 @@ export default function Landing() {
         <div className="reveal">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 34 }}>
             <div className="cta-eyebrow-line" />
-            <span style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--muted)", fontWeight: 500 }}>Ready when you are</span>
+            <span style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--muted)", fontWeight: 500 }}>{t.landing.cta.eyebrow}</span>
             <div className="cta-eyebrow-line" />
           </div>
 
@@ -796,12 +717,12 @@ export default function Landing() {
             className="serif"
             style={{ fontSize: "clamp(46px,8.5vw,104px)", fontWeight: 500, letterSpacing: "-0.045em", lineHeight: 1.0, marginBottom: 44, color: "var(--ink)" }}
           >
-            <span className="cta-line"><span>Stop guessing.</span></span>
-            <span className="cta-line"><span><em className="cta-accent" style={{ fontStyle: "italic" }}>Start wearing.</em></span></span>
+            <span className="cta-line"><span>{t.landing.cta.lineA}</span></span>
+            <span className="cta-line"><span><em className="cta-accent" style={{ fontStyle: "italic" }}>{t.landing.cta.lineB}</em></span></span>
           </h2>
 
           <Link href="/signup" className="btn-cta">
-            Try for free
+            {t.landing.cta.tryFree}
             <span className="btn-cta-arrows">
               <span>
                 <svg viewBox="0 0 16 16" fill="none"><path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -811,7 +732,7 @@ export default function Landing() {
           </Link>
 
           <p style={{ marginTop: 24, fontSize: 13, color: "var(--faint)", fontWeight: 300, letterSpacing: "0.02em" }}>
-            Free to start · No card needed
+            {t.landing.cta.note}
           </p>
         </div>
       </section>
@@ -832,11 +753,11 @@ export default function Landing() {
                 <span className="serif" style={{ fontSize: 46, fontWeight: 600, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1 }}>Wearit</span>
               </div>
               <p style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", marginTop: 18, fontWeight: 300, letterSpacing: "0.01em" }}>
-                See it on you, before you buy it.
+                {t.landing.footer.tagline}
               </p>
             </div>
             <Link href="/signup" className="footer-cta-btn">
-              Try for free
+              {t.landing.footer.tryFree}
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.6 }}>
                 <path d="M2.5 9.5L9.5 2.5M9.5 2.5H4M9.5 2.5V8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -846,22 +767,22 @@ export default function Landing() {
           {/* Links row: 3 columns */}
           <div className="footer-links-row">
             <div>
-              <p className="footer-col-label">Product</p>
-              <a href="#how"         className="footer-link">How it works</a>
-              <Link href="/app"      className="footer-link">Try-on</Link>
-              <Link href="/wardrobe" className="footer-link">Wardrobe</Link>
-              <a href="#pricing"     className="footer-link">Pricing</a>
-              <a href="#faq"         className="footer-link">FAQ</a>
+              <p className="footer-col-label">{t.landing.footer.product}</p>
+              <a href="#how"         className="footer-link">{t.landing.footer.how}</a>
+              <Link href="/app"      className="footer-link">{t.landing.footer.tryOn}</Link>
+              <Link href="/wardrobe" className="footer-link">{t.landing.footer.wardrobe}</Link>
+              <a href="#pricing"     className="footer-link">{t.landing.footer.pricing}</a>
+              <a href="#faq"         className="footer-link">{t.landing.footer.faq}</a>
             </div>
             <div>
-              <p className="footer-col-label">Company</p>
-              <a href="#" className="footer-link">About</a>
-              <a href="#" className="footer-link">Blog</a>
-              <a href="#" className="footer-link">Careers</a>
-              <a href="mailto:rgalbeke@gmail.com" className="footer-link">Contact</a>
+              <p className="footer-col-label">{t.landing.footer.company}</p>
+              <a href="#" className="footer-link">{t.landing.footer.about}</a>
+              <a href="#" className="footer-link">{t.landing.footer.blog}</a>
+              <a href="#" className="footer-link">{t.landing.footer.careers}</a>
+              <a href="mailto:rgalbeke@gmail.com" className="footer-link">{t.landing.footer.contact}</a>
             </div>
             <div>
-              <p className="footer-col-label">Connect</p>
+              <p className="footer-col-label">{t.landing.footer.connect}</p>
               <a href="https://www.instagram.com/zherik.tl?igsh=bjdwNTN0ejNpbHRk&utm_source=qr" target="_blank" rel="noopener noreferrer" className="footer-link">
                 <IconInstagram />
                 Instagram
@@ -880,12 +801,12 @@ export default function Landing() {
           {/* Bottom bar */}
           <div className="footer-bottom">
             <span style={{ fontSize: 12, color: "rgba(255,255,255,0.18)", letterSpacing: "0.01em" }}>
-              © 2026 Wearit. All rights reserved.
+              {t.landing.footer.rights}
             </span>
             <div style={{ display: "flex", gap: 28, alignItems: "center" }}>
-              <a href="#" className="footer-legal-link">Privacy</a>
-              <a href="#" className="footer-legal-link">Terms</a>
-              <a href="#" className="footer-legal-link">Cookies</a>
+              <a href="#" className="footer-legal-link">{t.landing.footer.privacy}</a>
+              <a href="#" className="footer-legal-link">{t.landing.footer.terms}</a>
+              <a href="#" className="footer-legal-link">{t.landing.footer.cookies}</a>
             </div>
           </div>
 
@@ -899,16 +820,9 @@ export default function Landing() {
 
 /* Pro details — Free vs Pro breakdown, opened from the pricing card. */
 function LandingProModal({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
   // [label, free, pro, highlighted = a real upgrade over free]
-  const ROWS: [string, string, string, boolean][] = [
-    ["Credits", "4 to start", "40 / month — 10×", true],
-    ["AI style verdict", "Yes", "Yes", false],
-    ["Wardrobe", "Up to 20 items", "Unlimited", true],
-    ["Outfit battles", "Yes", "Yes", false],
-    ["Share to socials", "Yes", "Yes", false],
-    ["Calendar styling", "—", "Plan looks by date", true],
-    ["AI shop-discovery agent", "—", "Finds pieces to buy", true],
-  ];
+  const ROWS = t.landing.proModal.rows;
   return (
     <div
       onClick={onClose}
@@ -916,17 +830,17 @@ function LandingProModal({ onClose }: { onClose: () => void }) {
       <div
         onClick={(e) => e.stopPropagation()}
         style={{ width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", background: "var(--ink)", borderRadius: 18, padding: "30px 28px", position: "relative", boxShadow: "0 30px 80px rgba(0,0,0,0.45)" }}>
-        <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 16, right: 16, width: 30, height: 30, borderRadius: 100, border: "1px solid rgba(255,255,255,0.18)", background: "transparent", color: "rgba(255,255,255,0.7)", cursor: "pointer", fontSize: 17, lineHeight: 1, padding: 0 }}>×</button>
+        <button onClick={onClose} aria-label={t.common.close} style={{ position: "absolute", top: 16, right: 16, width: 30, height: 30, borderRadius: 100, border: "1px solid rgba(255,255,255,0.18)", background: "transparent", color: "rgba(255,255,255,0.7)", cursor: "pointer", fontSize: 17, lineHeight: 1, padding: 0 }}>×</button>
 
-        <p style={{ fontSize: 11, letterSpacing: "0.14em", color: "#FFD9A8", fontWeight: 600, marginBottom: 8 }}>WEARIT PRO</p>
-        <h2 className="serif" style={{ fontSize: 30, fontWeight: 600, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>Try on more, decide faster</h2>
+        <p style={{ fontSize: 11, letterSpacing: "0.14em", color: "#FFD9A8", fontWeight: 600, marginBottom: 8 }}>{t.landing.proModal.eyebrow}</p>
+        <h2 className="serif" style={{ fontSize: 30, fontWeight: 600, color: "#fff", letterSpacing: "-0.03em", marginBottom: 6 }}>{t.landing.proModal.title}</h2>
         <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", fontWeight: 300, marginBottom: 22 }}>
-          <span style={{ fontSize: 26, color: "#fff", fontWeight: 500 }}>$13.99</span> / month · cancel anytime
+          <span style={{ fontSize: 26, color: "#fff", fontWeight: 500 }}>{t.landing.proModal.price}</span>{t.landing.proModal.priceSuffix}
         </p>
 
         <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, overflow: "hidden", marginBottom: 22 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.9fr 1.1fr", padding: "10px 14px", fontSize: 11, letterSpacing: "0.06em", color: "rgba(255,255,255,0.4)", borderBottom: "1px solid rgba(255,255,255,0.1)", fontWeight: 600 }}>
-            <span></span><span>FREE</span><span style={{ color: "#FFD9A8" }}>PRO</span>
+            <span></span><span>{t.landing.proModal.free}</span><span style={{ color: "#FFD9A8" }}>{t.landing.proModal.pro}</span>
           </div>
           {ROWS.map(([label, free, pro, hot], i) => (
             <div key={label} style={{ display: "grid", gridTemplateColumns: "1.3fr 0.9fr 1.1fr", alignItems: "center", padding: "11px 14px", borderBottom: i < ROWS.length - 1 ? "1px solid rgba(255,255,255,0.07)" : undefined, background: hot ? "rgba(176,138,62,0.08)" : undefined }}>
@@ -940,10 +854,10 @@ function LandingProModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <Link href="/signup" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#fff", color: "var(--ink)", borderRadius: 8, padding: "15px", fontSize: 15, fontWeight: 600, textDecoration: "none" }}>
-          Start free trial
+          {t.landing.proModal.startTrial}
         </Link>
         <button onClick={onClose} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer", fontFamily: "'Hanken Grotesk',sans-serif" }}>
-          Maybe later
+          {t.landing.proModal.maybeLater}
         </button>
       </div>
     </div>

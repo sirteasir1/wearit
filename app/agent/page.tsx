@@ -8,6 +8,7 @@ import { getWardrobe, getProfile, getStyleProfile, saveStyleProfile, WardrobeIte
 import type { Suggestion, WardrobeBrief, Piece } from "@/lib/agent";
 import { IconWand, IconSpark, IconHanger, IconSearch } from "@/lib/icons";
 import { toast } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 
 type RecoState = { busy?: boolean; error?: string; pieces?: Piece[] };
 type Provider = "google" | "notion";
@@ -16,6 +17,8 @@ const brief = (wd: WardrobeItem[]): WardrobeBrief[] =>
   wd.map((w) => ({ id: w.id, name: w.name, category: w.category, verdict: w.verdict, score: w.score }));
 
 export default function AgentPage() {
+  const { t } = useI18n();
+  const provLabel = (p: Provider) => (p === "google" ? t.agent.googleCalendar : t.agent.notion);
   const [uid, setUid]                 = useState<string | null>(null);
   const [items, setItems]             = useState<WardrobeItem[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -39,7 +42,7 @@ export default function AgentPage() {
       const d = await r.json();
       setReco((p) => ({ ...p, [s.id]: { pieces: d.pieces || [], error: d.error } }));
     } catch {
-      setReco((p) => ({ ...p, [s.id]: { error: "Couldn't put a look together — try again." } }));
+      setReco((p) => ({ ...p, [s.id]: { error: t.agent.couldntPutLook } }));
     }
   };
 
@@ -102,7 +105,7 @@ export default function AgentPage() {
     if (!token) return;
     await fetch(`/api/integrations?provider=${provider}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
     setConns((c) => c.filter((p) => p !== provider));
-    toast(`${provider === "google" ? "Google Calendar" : "Notion"} disconnected`);
+    toast(t.agent.disconnectedToast(provLabel(provider)));
     load(items, style?.summary || "");
   };
 
@@ -111,11 +114,9 @@ export default function AgentPage() {
     if (typeof window === "undefined") return;
     const q = new URLSearchParams(window.location.search);
     const connected = q.get("connected"), error = q.get("error");
-    if (connected) toast(`${connected === "google" ? "Google Calendar" : "Notion"} connected`, "success");
+    if (connected) toast(t.agent.connectedToast(connected === "google" ? t.agent.googleCalendar : t.agent.notion), "success");
     else if (error) {
-      const msg = error.endsWith("not_configured")
-        ? "That calendar isn't set up yet (missing OAuth keys)."
-        : "Couldn't connect — please try again.";
+      const msg = error.endsWith("not_configured") ? t.agent.notConfigured : t.agent.couldntConnect;
       toast(msg, "error");
     }
     if (connected || error) window.history.replaceState({}, "", "/agent");
@@ -147,11 +148,11 @@ export default function AgentPage() {
   return (
     <AppShell>
       <div className="page-in" style={{ padding: "48px 44px", maxWidth: 820 }}>
-        <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 14, fontWeight: 600 }}>Your stylist</p>
+        <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 14, fontWeight: 600 }}>{t.agent.eyebrow}</p>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 28 }}>
-          <h1 className="serif" style={{ fontSize: 46, fontWeight: 600, letterSpacing: "-0.035em", color: "var(--ink)" }}>Today’s plan</h1>
+          <h1 className="serif" style={{ fontSize: 46, fontWeight: 600, letterSpacing: "-0.035em", color: "var(--ink)" }}>{t.agent.title}</h1>
           <button onClick={refresh} disabled={learning} className="chip" style={{ padding: "9px 16px", borderRadius: 100, fontSize: 13, background: "var(--card)", border: "1px solid var(--border)", color: "var(--ink)", cursor: "pointer", display: "flex", alignItems: "center", gap: 7, opacity: learning ? 0.6 : 1 }}>
-            <IconWand size={15} /> {learning ? "Learning…" : "Refresh"}
+            <IconWand size={15} /> {learning ? t.agent.learning : t.agent.refresh}
           </button>
         </div>
 
@@ -160,7 +161,7 @@ export default function AgentPage() {
           <div className="card" style={{ padding: "20px 24px", marginBottom: 18 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <span style={{ display: "inline-flex", color: "var(--brand)" }}><IconWand size={16} /></span>
-              <p style={{ fontSize: 12, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", fontWeight: 600 }}>Your style, learned</p>
+              <p style={{ fontSize: 12, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", fontWeight: 600 }}>{t.agent.styleLearned}</p>
             </div>
             <p className="serif" style={{ fontSize: 18, fontWeight: 400, color: "var(--ink)", lineHeight: 1.5, letterSpacing: "-0.01em", marginBottom: style.tags?.length ? 14 : 0 }}>{style.summary}</p>
             {style.tags?.length > 0 && (
@@ -178,22 +179,22 @@ export default function AgentPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
             <span style={{ width: 38, height: 38, borderRadius: 10, background: "var(--brand)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconWand size={18} /></span>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{conns.length ? "Your calendars" : "Connect your calendar"}</p>
-              <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>Link your own Google Calendar or Notion and I’ll style you for your real schedule.</p>
+              <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{conns.length ? t.agent.yourCalendars : t.agent.connectCalendar}</p>
+              <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>{t.agent.calendarDesc}</p>
             </div>
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {(["google", "notion"] as Provider[]).map((p) => {
               const on = conns.includes(p);
-              const label = p === "google" ? "Google Calendar" : "Notion";
+              const label = provLabel(p);
               return on ? (
                 <span key={p} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 500, color: "var(--ink)", background: "var(--card)", border: "1px solid var(--brand-ring)", padding: "8px 14px", borderRadius: 100 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#1a7a2e" }} /> {label} connected
-                  <button onClick={() => disconnect(p)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 12, padding: 0, marginLeft: 2, textDecoration: "underline" }}>Disconnect</button>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#1a7a2e" }} /> {t.agent.connected(label)}
+                  <button onClick={() => disconnect(p)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 12, padding: 0, marginLeft: 2, textDecoration: "underline" }}>{t.agent.disconnect}</button>
                 </span>
               ) : (
                 <button key={p} onClick={() => connect(p)} disabled={!configured[p]} className="btn-dark" style={{ padding: "9px 16px", fontSize: 13, gap: 7, opacity: configured[p] ? 1 : 0.45 }}>
-                  Connect {label}{!configured[p] && " · soon"}
+                  {t.agent.connect(label)}{!configured[p] && t.agent.soon}
                 </button>
               );
             })}
@@ -208,7 +209,7 @@ export default function AgentPage() {
         ) : suggestions.length === 0 ? (
           <div style={{ border: "1px dashed var(--border)", borderRadius: 16, padding: "60px 32px", textAlign: "center", background: "var(--card)" }}>
             <div style={{ display: "inline-flex", color: "var(--faint)", marginBottom: 14 }}><IconWand size={36} /></div>
-            <p style={{ fontSize: 15, color: "var(--muted)" }}>Nothing to suggest yet — try a look on and I’ll start planning.</p>
+            <p style={{ fontSize: 15, color: "var(--muted)" }}>{t.agent.nothingToSuggest}</p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -230,16 +231,16 @@ export default function AgentPage() {
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {s.action === "wardrobe" && s.lookId && (
                         <Link href="/wardrobe" className="btn-dark" style={{ padding: "9px 16px", fontSize: 13, gap: 7 }}>
-                          <IconHanger size={15} /> Wear this look
+                          <IconHanger size={15} /> {t.agent.wearThisLook}
                         </Link>
                       )}
                       {s.action === "tryon" && (
                         <Link href="/app" className="btn-dark" style={{ padding: "9px 16px", fontSize: 13, gap: 7 }}>
-                          <IconSpark size={15} /> Try a look on
+                          <IconSpark size={15} /> {t.agent.tryALookOn}
                         </Link>
                       )}
                       <button onClick={() => suggestOutfit(s)} disabled={reco[s.id]?.busy} className={s.action === "shop" ? "btn-dark" : "btn-outline"} style={{ padding: "9px 16px", fontSize: 13, gap: 7, display: "inline-flex", alignItems: "center" }}>
-                        <IconSearch size={15} /> {reco[s.id]?.busy ? "Putting it together…" : reco[s.id]?.pieces ? "Suggest another" : "What should I wear?"}
+                        <IconSearch size={15} /> {reco[s.id]?.busy ? t.agent.puttingTogether : reco[s.id]?.pieces ? t.agent.suggestAnother : t.agent.whatToWear}
                       </button>
                     </div>
 
@@ -249,7 +250,7 @@ export default function AgentPage() {
                         <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 14 }}>{reco[s.id].error}</p>
                       ) : reco[s.id].pieces?.length ? (
                         <div style={{ marginTop: 16, padding: "16px 18px", border: "1px solid var(--brand-ring)", borderRadius: 12, background: "var(--brand-soft)" }}>
-                          <p style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand)", fontWeight: 600, marginBottom: 12 }}>Here’s a look</p>
+                          <p style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand)", fontWeight: 600, marginBottom: 12 }}>{t.agent.heresALook}</p>
                           {reco[s.id].pieces!.some((p) => p.image) ? (
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(132px,1fr))", gap: 12 }}>
                               {reco[s.id].pieces!.map((p, pi) => (
@@ -269,8 +270,8 @@ export default function AgentPage() {
                                       </div>
                                     )}
                                     <div style={{ display: "flex", gap: 6 }}>
-                                      {p.link && <a href={p.link} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ flex: 1, padding: "6px", fontSize: 11, justifyContent: "center" }}>View</a>}
-                                      {p.image && <Link href={`/app?garment=${encodeURIComponent(p.image)}`} className="btn-dark" style={{ flex: 1, padding: "6px", fontSize: 11, justifyContent: "center", gap: 4 }}><IconSpark size={12} /> Try</Link>}
+                                      {p.link && <a href={p.link} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ flex: 1, padding: "6px", fontSize: 11, justifyContent: "center" }}>{t.agent.view}</a>}
+                                      {p.image && <Link href={`/app?garment=${encodeURIComponent(p.image)}`} className="btn-dark" style={{ flex: 1, padding: "6px", fontSize: 11, justifyContent: "center", gap: 4 }}><IconSpark size={12} /> {t.agent.tryShort}</Link>}
                                     </div>
                                   </div>
                                 </div>

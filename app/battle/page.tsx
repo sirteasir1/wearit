@@ -11,13 +11,14 @@ import {
 } from "@/lib/battle";
 import { IconBattle, IconArrowRight, IconCheck, IconShare, IconSpark } from "@/lib/icons";
 import { toast } from "@/lib/toast";
+import { useI18n, type Dict } from "@/lib/i18n";
 
-function timeLeft(expiresAt: number): string {
+function timeLeft(expiresAt: number, t: Dict): string {
   const ms = expiresAt - Date.now();
-  if (ms <= 0) return "Ended";
+  if (ms <= 0) return t.battle.ended;
   const h = Math.floor(ms / 3_600_000);
-  if (h >= 1) return `${h}h left`;
-  return `${Math.max(1, Math.floor(ms / 60_000))}m left`;
+  if (h >= 1) return t.battle.hLeft(h);
+  return t.battle.mLeft(Math.max(1, Math.floor(ms / 60_000)));
 }
 
 function leader(b: Battle): { name: string; pct: number } | null {
@@ -27,6 +28,7 @@ function leader(b: Battle): { name: string; pct: number } | null {
 }
 
 export default function BattlePage() {
+  const { t } = useI18n();
   const [looks, setLooks]     = useState<WardrobeItem[]>([]);
   const [picked, setPicked]   = useState<string[]>([]);
   const [question, setQuestion] = useState("");
@@ -49,7 +51,7 @@ export default function BattlePage() {
   const toggle = (id: string) => {
     setPicked((p) => {
       if (p.includes(id)) return p.filter((x) => x !== id);
-      if (p.length >= MAX_OPTIONS) { toast(`Up to ${MAX_OPTIONS} looks`, "error"); return p; }
+      if (p.length >= MAX_OPTIONS) { toast(t.battle.upToLooks(MAX_OPTIONS), "error"); return p; }
       return [...p, id];
     });
   };
@@ -59,7 +61,7 @@ export default function BattlePage() {
     setBusy(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      if (!token) throw new Error("Please sign in again");
+      if (!token) throw new Error(t.battle.signInAgain);
       // keep selection order; shrink each thumbnail so the battle doc stays light
       const chosen = await Promise.all(
         picked
@@ -70,10 +72,10 @@ export default function BattlePage() {
       const res = await createBattle(token, { question: question.trim(), options: chosen });
       setCreated(res);
       setPicked([]); setQuestion("");
-      toast("Battle created — share it!", "success");
+      toast(t.battle.created, "success");
       loadMine();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Could not create battle", "error");
+      toast(e instanceof Error ? e.message : t.battle.couldNotCreate, "error");
     } finally {
       setBusy(false);
     }
@@ -81,12 +83,12 @@ export default function BattlePage() {
 
   const share = async (url: string) => {
     const nav = navigator as Navigator & { share?: (d: { title?: string; text?: string; url?: string }) => Promise<void> };
-    const payload = { title: "Wearit · which look?", text: "Vote on my look 👀", url };
+    const payload = { title: t.battle.shareTitle, text: t.battle.shareText, url };
     try {
       if (nav.share) { await nav.share(payload); return; }
     } catch { /* fall through to copy */ }
     await navigator.clipboard.writeText(url);
-    toast("Link copied", "success");
+    toast(t.battle.linkCopied, "success");
   };
 
   return (
@@ -94,25 +96,25 @@ export default function BattlePage() {
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 20px 80px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
           <IconBattle size={26} style={{ color: "var(--brand)" }} />
-          <h1 className="serif" style={{ fontSize: 40, fontWeight: 600, letterSpacing: "-0.035em", color: "var(--ink)" }}>Outfit Battle</h1>
+          <h1 className="serif" style={{ fontSize: 40, fontWeight: 600, letterSpacing: "-0.035em", color: "var(--ink)" }}>{t.battle.title}</h1>
         </div>
         <p style={{ fontSize: 15, color: "var(--muted)", marginBottom: 30, fontWeight: 300 }}>
-          Pick {MIN_OPTIONS}–{MAX_OPTIONS} of your looks, send the link to friends, and let them vote on which one wins.
+          {t.battle.intro(MIN_OPTIONS, MAX_OPTIONS)}
         </p>
 
         {/* Just-created share card */}
         {created && (
           <div style={{ border: "1px solid var(--brand)", background: "var(--card)", borderRadius: 14, padding: 18, marginBottom: 28 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, color: "var(--brand)" }}>
-              <IconCheck size={18} /> <span style={{ fontWeight: 600, fontSize: 14 }}>Your battle is live</span>
+              <IconCheck size={18} /> <span style={{ fontWeight: 600, fontSize: 14 }}>{t.battle.battleLive}</span>
             </div>
             <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14, wordBreak: "break-all" }}>{created.url}</p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button className="btn-dark" onClick={() => share(created.url)} style={{ padding: "11px 18px", borderRadius: 8, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
-                <IconShare size={16} /> Share
+                <IconShare size={16} /> {t.battle.share}
               </button>
               <Link href={`/b/${created.id}`} className="btn-ghost" style={{ padding: "11px 18px", borderRadius: 8, fontSize: 14, border: "1px solid var(--border)", color: "var(--ink)", textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
-                See results <IconArrowRight size={15} />
+                {t.battle.seeResults} <IconArrowRight size={15} />
               </Link>
             </div>
           </div>
@@ -122,20 +124,20 @@ export default function BattlePage() {
         {looks.length === 0 ? (
           <div style={{ textAlign: "center", padding: "48px 20px", border: "1px dashed var(--border)", borderRadius: 14, marginBottom: 36 }}>
             <div style={{ display: "inline-flex", color: "var(--faint)", marginBottom: 14 }}><IconSpark size={34} /></div>
-            <h3 className="serif" style={{ fontSize: 22, fontWeight: 600, color: "var(--ink)", marginBottom: 8 }}>No looks yet</h3>
-            <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 18, fontWeight: 300 }}>Try a few outfits on first — saved looks become your battle options.</p>
+            <h3 className="serif" style={{ fontSize: 22, fontWeight: 600, color: "var(--ink)", marginBottom: 8 }}>{t.battle.noLooks}</h3>
+            <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 18, fontWeight: 300 }}>{t.battle.noLooksBody}</p>
             <Link href="/app" className="btn-dark" style={{ padding: "12px 20px", borderRadius: 8, fontSize: 14, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8 }}>
-              Try something on <IconArrowRight size={15} />
+              {t.battle.trySomethingOn} <IconArrowRight size={15} />
             </Link>
           </div>
         ) : (
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-              <p style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--faint)", fontWeight: 500 }}>Pick your contenders</p>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>{picked.length}/{MAX_OPTIONS} selected</span>
+              <p style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--faint)", fontWeight: 500 }}>{t.battle.pickContenders}</p>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>{t.battle.selected(picked.length, MAX_OPTIONS)}</span>
             </div>
             <p className={picked.length === 0 ? "bt-tap" : undefined} style={{ fontSize: 13, color: picked.length === 0 ? "var(--brand)" : "var(--muted)", fontWeight: 400, marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6 }}>
-              👆 Tap a look to add it — choose {MIN_OPTIONS}–{MAX_OPTIONS}.
+              {t.battle.tapToAdd(MIN_OPTIONS, MAX_OPTIONS)}
             </p>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 12, marginBottom: 20 }}>
@@ -151,7 +153,7 @@ export default function BattlePage() {
                     {on ? (
                       <span style={{ position: "absolute", top: 6, left: 6, width: 24, height: 24, borderRadius: 100, background: "var(--brand)", color: "#fff", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>{idx + 1}</span>
                     ) : (
-                      <span className="bt-tap-pill">+ Add</span>
+                      <span className="bt-tap-pill">{t.battle.add}</span>
                     )}
                   </button>
                 );
@@ -161,14 +163,14 @@ export default function BattlePage() {
             <input
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Ask a question (optional) — e.g. Which for the date?"
+              placeholder={t.battle.questionPlaceholder}
               maxLength={140}
               style={{ width: "100%", padding: "13px 15px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", color: "var(--ink)", fontSize: 14, marginBottom: 16, fontFamily: "'Hanken Grotesk',sans-serif" }}
             />
 
             <button className={`btn-dark${picked.length >= MIN_OPTIONS && !busy ? " btn-ready" : ""}`} onClick={create} disabled={picked.length < MIN_OPTIONS || busy}
               style={{ width: "100%", padding: "16px", fontSize: 15, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 44 }}>
-              {busy ? <div className="spinner" style={{ width: 18, height: 18 }} /> : <><IconBattle size={18} /> Create battle{picked.length >= MIN_OPTIONS ? ` · ${picked.length} looks` : ""}</>}
+              {busy ? <div className="spinner" style={{ width: 18, height: 18 }} /> : <><IconBattle size={18} /> {picked.length >= MIN_OPTIONS ? t.battle.createBattleN(picked.length) : t.battle.createBattle}</>}
             </button>
           </>
         )}
@@ -176,7 +178,7 @@ export default function BattlePage() {
         {/* My battles */}
         {mine.length > 0 && (
           <>
-            <p style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--faint)", fontWeight: 500, marginBottom: 14 }}>Your battles</p>
+            <p style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--faint)", fontWeight: 500, marginBottom: 14 }}>{t.battle.yourBattles}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {mine.map((b) => {
                 const lead = leader(b);
@@ -188,9 +190,9 @@ export default function BattlePage() {
                       ))}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{b.question || `${b.options.length}-way battle`}</div>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{b.question || t.battle.nWay(b.options.length)}</div>
                       <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>
-                        {b.totalVotes} vote{b.totalVotes === 1 ? "" : "s"}{lead ? ` · leading ${lead.pct}%` : ""} · {timeLeft(b.expiresAt)}
+                        {t.battle.voteSummary(b.totalVotes, lead ? lead.pct : null, timeLeft(b.expiresAt, t))}
                       </div>
                     </div>
                     <IconArrowRight size={16} style={{ color: "var(--faint)", flexShrink: 0 }} />

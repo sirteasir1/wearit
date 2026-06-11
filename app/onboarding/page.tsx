@@ -6,14 +6,15 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { getProfile, saveProfile, pullRemote, fileToResizedDataURL, UserProfile } from "@/lib/store";
 import { IconCamera, IconArrowRight, IconCheck } from "@/lib/icons";
-
-const GENDERS: { v: UserProfile["gender"]; label: string }[] = [
-  { v: "female", label: "Woman" },
-  { v: "male",   label: "Man" },
-  { v: "other",  label: "Other" },
-];
+import { useI18n, LangSwitch } from "@/lib/i18n";
 
 export default function Onboarding() {
+  const { t } = useI18n();
+  const GENDERS: { v: UserProfile["gender"]; label: string }[] = [
+    { v: "female", label: t.onboarding.genderWoman },
+    { v: "male",   label: t.onboarding.genderMan },
+    { v: "other",  label: t.onboarding.genderOther },
+  ];
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [user, setUser]   = useState<User | null | "loading">("loading");
@@ -61,12 +62,12 @@ export default function Onboarding() {
       // keep it small enough to always sync via Firestore (cross-device), still good for try-on
       setPhoto(await fileToResizedDataURL(f, 880, 0.72));
     } catch {
-      setErr("Couldn't read that image. Try another.");
+      setErr(t.onboarding.errReadImage);
     }
   };
 
   const finish = async () => {
-    if (!photo) { setErr("Add a photo of yourself so we can dress you."); return; }
+    if (!photo) { setErr(t.onboarding.errAddPhoto); return; }
     setBusy(true);
     saveProfile(user.uid, {
       onboarded: true,
@@ -88,7 +89,10 @@ export default function Onboarding() {
           <img src="/logo-mark.png" alt="Wearit" className="brand-mark" style={{ height:28 }} />
           <span className="brand-word" style={{ fontSize:19, color:"var(--ink)" }}>Wearit</span>
         </Link>
-        <span style={{ fontSize:12,color:"var(--faint)",letterSpacing:"0.04em" }}>Step 1 of 1</span>
+        <div style={{ display:"flex",alignItems:"center",gap:14 }}>
+          <LangSwitch />
+          <span style={{ fontSize:12,color:"var(--faint)",letterSpacing:"0.04em" }}>{t.onboarding.step}</span>
+        </div>
       </div>
 
       <div style={{ flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px" }}>
@@ -96,18 +100,18 @@ export default function Onboarding() {
 
           {/* LEFT — copy + fields */}
           <div className="anim-up">
-            <p style={{ fontSize:11,letterSpacing:"0.16em",textTransform:"uppercase",color:"var(--muted)",marginBottom:16,fontWeight:500 }}>Your fit profile</p>
+            <p style={{ fontSize:11,letterSpacing:"0.16em",textTransform:"uppercase",color:"var(--muted)",marginBottom:16,fontWeight:500 }}>{t.onboarding.eyebrow}</p>
             <h1 className="serif" style={{ fontSize:"clamp(34px,4vw,52px)",fontWeight:300,letterSpacing:"-0.03em",lineHeight:1.05,color:"var(--ink)",marginBottom:16 }}>
-              Tell us about<br/><em style={{ fontStyle:"italic" }}>your body</em>
+              {t.onboarding.titleA}<br/><em style={{ fontStyle:"italic" }}>{t.onboarding.titleB}</em>
             </h1>
             <p style={{ fontSize:15,color:"var(--muted)",lineHeight:1.75,fontWeight:300,marginBottom:36,maxWidth:380 }}>
-              We set this up once. After that you only ever upload the clothes — your photo and measurements stay saved.
+              {t.onboarding.intro}
             </p>
 
             {/* Height + Weight */}
             <div style={{ display:"flex",gap:14,marginBottom:24 }}>
               <label style={{ flex:1 }}>
-                <span style={{ fontSize:12,fontWeight:500,color:"var(--muted)",display:"block",marginBottom:8 }}>Height</span>
+                <span style={{ fontSize:12,fontWeight:500,color:"var(--muted)",display:"block",marginBottom:8 }}>{t.onboarding.height}</span>
                 <div style={{ position:"relative" }}>
                   <input className="input" inputMode="numeric" value={height}
                     onChange={e=>setHeight(e.target.value.replace(/[^0-9]/g,"").slice(0,3))}
@@ -116,7 +120,7 @@ export default function Onboarding() {
                 </div>
               </label>
               <label style={{ flex:1 }}>
-                <span style={{ fontSize:12,fontWeight:500,color:"var(--muted)",display:"block",marginBottom:8 }}>Weight</span>
+                <span style={{ fontSize:12,fontWeight:500,color:"var(--muted)",display:"block",marginBottom:8 }}>{t.onboarding.weight}</span>
                 <div style={{ position:"relative" }}>
                   <input className="input" inputMode="numeric" value={weight}
                     onChange={e=>setWeight(e.target.value.replace(/[^0-9]/g,"").slice(0,3))}
@@ -128,7 +132,7 @@ export default function Onboarding() {
 
             {/* Gender */}
             <div style={{ marginBottom:32 }}>
-              <span style={{ fontSize:12,fontWeight:500,color:"var(--muted)",display:"block",marginBottom:8 }}>I usually shop</span>
+              <span style={{ fontSize:12,fontWeight:500,color:"var(--muted)",display:"block",marginBottom:8 }}>{t.onboarding.iShop}</span>
               <div style={{ display:"flex",gap:8 }}>
                 {GENDERS.map(g => (
                   <button key={g.v} onClick={()=>setGender(g.v)} style={{
@@ -150,10 +154,10 @@ export default function Onboarding() {
             )}
 
             <button className="btn-cta" onClick={finish} disabled={busy} style={{ width:"100%",justifyContent:"center" }}>
-              {busy ? "Saving…" : (wasOnboarded ? "Save changes" : "Start trying on")}
+              {busy ? t.onboarding.saving : (wasOnboarded ? t.onboarding.saveChanges : t.onboarding.startTryingOn)}
               <span className="btn-cta-arrows"><span><IconArrowRight size={16}/><IconArrowRight size={16}/></span></span>
             </button>
-            <p style={{ textAlign:"center",fontSize:12,color:"var(--faint)",marginTop:14 }}>Private to you · used only to render your try-ons</p>
+            <p style={{ textAlign:"center",fontSize:12,color:"var(--faint)",marginTop:14 }}>{t.onboarding.privateNote}</p>
           </div>
 
           {/* RIGHT — photo upload */}
@@ -169,23 +173,23 @@ export default function Onboarding() {
                 <>
                   <img src={photo} alt="You" style={{ position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover" }} />
                   <div style={{ position:"absolute",top:12,left:12,display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,0.92)",backdropFilter:"blur(8px)",padding:"5px 11px",borderRadius:100,fontSize:12,color:"#1a7a2e",fontWeight:500 }}>
-                    <IconCheck size={13}/> Photo added
+                    <IconCheck size={13}/> {t.onboarding.photoAdded}
                   </div>
                   <button onClick={(e)=>{e.stopPropagation();fileRef.current?.click();}}
                     style={{ position:"absolute",bottom:12,right:12,background:"rgba(255,255,255,0.92)",border:"1px solid var(--border)",borderRadius:6,fontSize:12,padding:"7px 14px",cursor:"pointer",backdropFilter:"blur(8px)",color:"var(--ink)" }}>
-                    Change
+                    {t.onboarding.change}
                   </button>
                 </>
               ) : (
                 <div style={{ textAlign:"center",padding:32,pointerEvents:"none",color:"var(--muted)" }}>
                   <div style={{ display:"inline-flex",color:"var(--faint)",marginBottom:14 }}><IconCamera size={34}/></div>
-                  <p style={{ fontSize:14,color:"var(--ink)",fontWeight:500,marginBottom:6 }}>Add a full-length photo</p>
-                  <p style={{ fontSize:13,lineHeight:1.6,fontWeight:300 }}>Stand straight, good light, plain background works best.<br/><span style={{ fontSize:11,color:"var(--faint)" }}>JPG · PNG · WebP</span></p>
+                  <p style={{ fontSize:14,color:"var(--ink)",fontWeight:500,marginBottom:6 }}>{t.onboarding.addPhoto}</p>
+                  <p style={{ fontSize:13,lineHeight:1.6,fontWeight:300 }}>{t.onboarding.photoHint}<br/><span style={{ fontSize:11,color:"var(--faint)" }}>{t.onboarding.photoTypes}</span></p>
                 </div>
               )}
             </div>
             <p style={{ fontSize:12,color:"var(--faint)",marginTop:14,lineHeight:1.6,textAlign:"center" }}>
-              {stepDone ? "Looking good. You can change this any time in your profile." : "This becomes your model for every try-on."}
+              {stepDone ? t.onboarding.lookingGood : t.onboarding.becomesModel}
             </p>
           </div>
         </div>
