@@ -269,6 +269,7 @@ const en = {
     couldntPutLook: "Couldn't put a look together — try again.",
     view: "View",
     tryShort: "Try",
+    tryWholeLook: (n: number) => `Try the whole look · ${n} pieces`,
     // toasts
     connectedToast: (label: string) => `${label} connected`,
     disconnectedToast: (label: string) => `${label} disconnected`,
@@ -762,6 +763,7 @@ const ru: Dict = {
     couldntPutLook: "Не удалось собрать образ — попробуйте ещё раз.",
     view: "Открыть",
     tryShort: "Примерить",
+    tryWholeLook: (n: number) => `Примерить весь образ · ${n} ${rp(n, ["вещь", "вещи", "вещей"])}`,
     connectedToast: (label: string) => `${label} подключён`,
     disconnectedToast: (label: string) => `${label} отключён`,
     notConfigured: "Этот календарь ещё не настроен (нет ключей OAuth).",

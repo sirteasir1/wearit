@@ -19,6 +19,24 @@ const brief = (wd: WardrobeItem[]): WardrobeBrief[] =>
 export default function AgentPage() {
   const { t } = useI18n();
   const provLabel = (p: Provider) => (p === "google" ? t.agent.googleCalendar : t.agent.notion);
+
+  /* Map a recommended piece's slot to a try-on category (drives layering). */
+  const slotToCat = (slot?: string): "tops" | "bottoms" | "one-pieces" => {
+    const s = (slot || "").toLowerCase();
+    if (/(bottom|pant|trouser|jean|skirt|short)/.test(s)) return "bottoms";
+    if (/(dress|jumpsuit|gown|one-?piece)/.test(s)) return "one-pieces";
+    return "tops"; // top, outerwear, shoes → upper layer
+  };
+
+  /* Build a /app link that loads every photo piece of a look at once. */
+  const wholeLookHref = (pieces: Piece[]): string => {
+    const q = pieces
+      .filter((p) => p.image)
+      .slice(0, 4) // try-on caps at 4 garments
+      .map((p) => `garment=${encodeURIComponent(p.image!)}&cat=${slotToCat(p.slot)}`)
+      .join("&");
+    return `/app?${q}`;
+  };
   const [uid, setUid]                 = useState<string | null>(null);
   const [items, setItems]             = useState<WardrobeItem[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -250,7 +268,14 @@ export default function AgentPage() {
                         <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 14 }}>{reco[s.id].error}</p>
                       ) : reco[s.id].pieces?.length ? (
                         <div style={{ marginTop: 16, padding: "16px 18px", border: "1px solid var(--brand-ring)", borderRadius: 12, background: "var(--brand-soft)" }}>
-                          <p style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand)", fontWeight: 600, marginBottom: 12 }}>{t.agent.heresALook}</p>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                            <p style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand)", fontWeight: 600 }}>{t.agent.heresALook}</p>
+                            {reco[s.id].pieces!.filter((p) => p.image).length > 1 && (
+                              <Link href={wholeLookHref(reco[s.id].pieces!)} className="btn-dark" style={{ padding: "8px 14px", fontSize: 12.5, gap: 6 }}>
+                                <IconSpark size={14} /> {t.agent.tryWholeLook(Math.min(4, reco[s.id].pieces!.filter((p) => p.image).length))}
+                              </Link>
+                            )}
+                          </div>
                           {reco[s.id].pieces!.some((p) => p.image) ? (
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(132px,1fr))", gap: 12 }}>
                               {reco[s.id].pieces!.map((p, pi) => (

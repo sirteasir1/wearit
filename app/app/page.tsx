@@ -178,33 +178,54 @@ export default function TryOnApp() {
     })();
   }, [t]);
 
-  const useLink = async (rawUrl?: string) => {
-    const u = (rawUrl ?? linkUrl).trim();
-    if (!u || linkBusy) return;
-    if (garments.length >= MAX_GARMENTS) { toast(t.app.upToPieces(MAX_GARMENTS), "error"); return; }
-    setLinkBusy(true); setError(null);
+  // Fetch one garment image from a URL and add it with the given category.
+  // Only surfaces errors; the caller decides whether to show a success toast.
+  const addGarmentFromUrl = async (rawUrl: string, cat: Category = "tops"): Promise<boolean> => {
+    const u = rawUrl.trim();
+    if (!u) return false;
     try {
       const r = await fetch("/api/fetch-image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: u }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || t.app.couldntLoadLink);
       const file = await dataURLToFile(d.dataUrl, "garment.jpg");
-      if (addGarment({ file, url: d.dataUrl, cat: "tops" })) { setLinkUrl(""); toast(t.app.garmentAdded, "success"); }
+      return addGarment({ file, url: d.dataUrl, cat });
     } catch (e) {
       toast(e instanceof Error ? e.message : t.app.couldntLoadLink, "error");
-    } finally {
-      setLinkBusy(false);
+      return false;
     }
   };
 
-  // Auto-load a garment handed off from the Stylist's Shop Discovery (?garment=<url>).
+  const useLink = async (rawUrl?: string) => {
+    const u = (rawUrl ?? linkUrl).trim();
+    if (!u || linkBusy) return;
+    if (garments.length >= MAX_GARMENTS) { toast(t.app.upToPieces(MAX_GARMENTS), "error"); return; }
+    setLinkBusy(true); setError(null);
+    const ok = await addGarmentFromUrl(u);
+    if (ok) { setLinkUrl(""); toast(t.app.garmentAdded, "success"); }
+    setLinkBusy(false);
+  };
+
+  // Auto-load garment(s) handed off from the Stylist — one piece (?garment=<url>)
+  // or a whole look (?garment=<a>&cat=tops&garment=<b>&cat=bottoms…). Each piece
+  // becomes its own garment (and its own credit), with the right category set.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const g = new URLSearchParams(window.location.search).get("garment");
-    if (!g) return;
-    useLink(g);
-    // clear the param so a refresh doesn't reload it
+    const params = new URLSearchParams(window.location.search);
+    const gs = params.getAll("garment");
+    if (gs.length === 0) return;
+    const cats = params.getAll("cat");
+    (async () => {
+      setLinkBusy(true); setError(null);
+      for (let i = 0; i < gs.length && i < MAX_GARMENTS; i++) {
+        const c = (["tops", "bottoms", "one-pieces"].includes(cats[i]) ? cats[i] : "tops") as Category;
+        await addGarmentFromUrl(gs[i], c);
+      }
+      setLinkBusy(false);
+    })();
+    // clear the params so a refresh doesn't reload them
     const url = new URL(window.location.href);
     url.searchParams.delete("garment");
+    url.searchParams.delete("cat");
     window.history.replaceState({}, "", url.toString());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
