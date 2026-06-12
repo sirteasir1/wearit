@@ -20,6 +20,20 @@ export default function VerifyEmail() {
   /* Once verified, send them into the app (AppShell handles onboarding). */
   const proceed = () => router.replace("/app");
 
+  /* Reload the user; if the account was deleted/disabled (stale session),
+     sign out cleanly and bounce to sign-in instead of looping forever. */
+  const reloadOrBail = async (u: User): Promise<boolean> => {
+    try { await u.reload(); return true; }
+    catch (e) {
+      const code = (e as { code?: string })?.code || "";
+      if (/user-token-expired|user-not-found|user-disabled/.test(code)) {
+        try { await signOut(auth); } catch { /* ignore */ }
+        router.replace("/signin");
+      }
+      return false;
+    }
+  };
+
   useEffect(() => onAuthStateChanged(auth, (u) => {
     if (!u) { router.replace("/signin"); return; }
     if (u.emailVerified) { proceed(); return; }
@@ -32,10 +46,8 @@ export default function VerifyEmail() {
   useEffect(() => {
     if (user === "loading" || user === null) return;
     pollRef.current = setInterval(async () => {
-      try {
-        await user.reload();
-        if (auth.currentUser?.emailVerified) { clearInterval(pollRef.current!); proceed(); }
-      } catch { /* offline — keep trying */ }
+      const ok = await reloadOrBail(user);
+      if (ok && auth.currentUser?.emailVerified) { clearInterval(pollRef.current!); proceed(); }
     }, 4000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -60,12 +72,12 @@ export default function VerifyEmail() {
 
   const check = async () => {
     setChecking(true); setNotYet(false);
-    try {
-      await user.reload();
+    const ok = await reloadOrBail(user);
+    if (ok) {
       if (auth.currentUser?.emailVerified) { proceed(); return; }
       setNotYet(true);
-    } catch { setNotYet(true); }
-    finally { setChecking(false); }
+    }
+    setChecking(false);
   };
 
   const resend = async () => {
