@@ -1811,6 +1811,11 @@ button, input, textarea, select, optgroup { font-family: inherit; }
 /* Backdrop is mobile-only */
 .app-sidebar-backdrop { display: none; }
 
+/* Sidebar "Upgrade to Pro" CTA */
+.sidebar-pro { transition: transform .18s cubic-bezier(.22,1,.36,1), box-shadow .25s, filter .2s; }
+.sidebar-pro:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(176,138,62,0.42); filter: brightness(1.04); }
+.sidebar-pro:active { transform: translateY(0) scale(.98); }
+
 /* ── SMALL MOBILE (max 480px) ── */
 @media (max-width: 480px) {
   .hero-stats    { flex-direction: row; gap: 28px; }

@@ -27,6 +27,7 @@ const en = {
     tryShort: "Try",
     linkCopied: "Link copied",
     user: "User",
+    upgradeToPro: "Upgrade to Pro",
   },
 
   nav: {
@@ -522,6 +523,7 @@ const ru: Dict = {
     tryShort: "Примерить",
     linkCopied: "Ссылка скопирована",
     user: "Пользователь",
+    upgradeToPro: "Перейти на Pro",
   },
 
   nav: {

@@ -4,9 +4,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { getProfile, pullRemote } from "@/lib/store";
+import { getProfile, pullRemote, getPlan, Plan } from "@/lib/store";
 import { IconSpark, IconHanger, IconUser, IconSignOut, IconPanel, IconWand, IconBattle } from "@/lib/icons";
 import { useI18n, LangSwitch } from "@/lib/i18n";
+
+const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
 
 const NAV = [
   { href: "/app",      Icon: IconSpark,  key: "tryOn"    },
@@ -29,6 +31,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [signingOut, setSigningOut] = useState(false);
   const [collapsed, setCollapsed]   = useState(false);
   const [photo, setPhoto]           = useState<string | null>(null);
+  const [plan, setPlan]             = useState<Plan>("free");
   const [ready, setReady]           = useState(() => !!auth.currentUser && didInitialSync);
 
   useEffect(() => onAuthStateChanged(auth, (u) => setUser(u)), []);
@@ -69,6 +72,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       if (cancelled) return;
       const p = getProfile(user.uid);
       setPhoto(p.photo);
+      setPlan(getPlan(user.uid));
       if (!p.onboarded) { router.replace("/onboarding"); return; }
       setReady(true);
     })();
@@ -85,6 +89,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const displayName = user.displayName || user.email?.split("@")[0] || t.common.user;
   const initials    = displayName.slice(0, 1).toUpperCase();
+
+  const proHref = PRO_PRODUCT
+    ? `/api/checkout?products=${PRO_PRODUCT}&customerExternalId=${user.uid}&customerEmail=${encodeURIComponent(user.email || "")}`
+    : "/profile";
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -160,6 +168,23 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
+
+          {/* Upgrade to Pro — only on the free plan */}
+          {plan === "free" && (
+            <a
+              href={proHref}
+              className="sidebar-pro"
+              style={{
+                display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+                padding:"12px 14px",margin:"0 4px 12px",borderRadius:10,
+                background:"linear-gradient(135deg,#C9A84C,#8B6914)",color:"#fff",
+                fontSize:13,fontWeight:600,textDecoration:"none",letterSpacing:"0.01em",
+                boxShadow:"0 6px 18px rgba(176,138,62,0.32)",
+              }}
+            >
+              <IconSpark size={15} /> {t.common.upgradeToPro}
+            </a>
+          )}
 
           {/* Language */}
           <div style={{ padding:"4px 8px 12px",display:"flex",justifyContent:"center" }}>
