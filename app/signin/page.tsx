@@ -6,11 +6,13 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   sendEmailVerification,
+  sendPasswordResetEmail,
   onAuthStateChanged,
   AuthError,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useI18n, LangSwitch, type Dict } from "@/lib/i18n";
+import { toast } from "@/lib/toast";
 
 function authMessage(err: AuthError, t: Dict): string {
   switch (err.code) {
@@ -78,6 +80,17 @@ export default function SignIn() {
     }
   };
 
+  const resetPassword = async () => {
+    if (!form.email.trim()) { setError(t.auth.enterEmailFirst); return; }
+    setError("");
+    try {
+      await sendPasswordResetEmail(auth, form.email.trim());
+      toast(t.auth.resetSent, "success");
+    } catch (e) {
+      setError(authMessage(e as AuthError, t));
+    }
+  };
+
   const onKey = (e: React.KeyboardEvent) => { if (e.key === "Enter") submitEmail(); };
 
   return (
@@ -122,7 +135,7 @@ export default function SignIn() {
               <div key={f.k}>
                 <div style={{ display:"flex",justifyContent:"space-between",marginBottom:7 }}>
                   <label style={{ fontSize:12,fontWeight:500,color:"rgba(255,255,255,.4)" }}>{f.label}</label>
-                  {f.k==="password" && <a href="#" style={{ fontSize:12,color:"rgba(255,255,255,.3)",textDecoration:"none" }}>{t.auth.forgot}</a>}
+                  {f.k==="password" && <button type="button" onClick={resetPassword} style={{ fontSize:12,color:"rgba(255,255,255,.4)",textDecoration:"underline",textUnderlineOffset:2,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:"'Hanken Grotesk',sans-serif" }}>{t.auth.forgot}</button>}
                 </div>
                 <input
                   type={f.type} placeholder={f.ph}
