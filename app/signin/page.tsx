@@ -5,6 +5,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  sendEmailVerification,
   onAuthStateChanged,
   AuthError,
 } from "firebase/auth";
@@ -39,8 +40,8 @@ export default function SignIn() {
   const [error,   setError]   = useState("");
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
-  /* Already signed in? Go straight to the app. */
-  useEffect(() => onAuthStateChanged(auth, (u) => { if (u) window.location.replace("/app"); }), []);
+  /* Already signed in? Verified users go to the app; the rest must confirm. */
+  useEffect(() => onAuthStateChanged(auth, (u) => { if (u) window.location.replace(u.emailVerified ? "/app" : "/verify-email"); }), []);
 
   const afterAuth = () => { window.location.href = "/app"; };
 
@@ -49,7 +50,13 @@ export default function SignIn() {
     setLoading(true);
     setError("");
     try {
-      await signInWithEmailAndPassword(auth, form.email, form.password);
+      const cred = await signInWithEmailAndPassword(auth, form.email, form.password);
+      if (!cred.user.emailVerified) {
+        // Unconfirmed email accounts can't enter — send a fresh link and route to confirmation.
+        try { await sendEmailVerification(cred.user); } catch { /* they can resend there */ }
+        window.location.href = "/verify-email";
+        return;
+      }
       afterAuth();
     } catch (e) {
       setError(authMessage(e as AuthError, t));

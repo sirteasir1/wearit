@@ -31,6 +31,7 @@ export default function Onboarding() {
 
   useEffect(() => {
     if (user === null) { router.replace("/signin"); return; }
+    if (user && user !== "loading" && !user.emailVerified) { router.replace("/verify-email"); return; }
     if (user && user !== "loading") {
       let cancelled = false;
       (async () => {

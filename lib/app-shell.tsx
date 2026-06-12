@@ -59,6 +59,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user === null) { router.replace("/signin"); return; }
     if (user === "loading") return;
+    if (!user.emailVerified) { router.replace("/verify-email"); return; }
     let cancelled = false;
     (async () => {
       if (!didInitialSync) {

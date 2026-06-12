@@ -486,6 +486,21 @@ const en = {
     errWeakPass: "Password must be at least 6 characters.",
     errSignUpFailed: "Sign-up failed. Please try again.",
   },
+
+  verify: {
+    title: "Confirm your email",
+    sentTo: (email: string) => `We sent a confirmation link to ${email}.`,
+    instruction: "Open the link in that email, then come back here and continue.",
+    spam: "Didn't get it? Check your spam folder.",
+    continue: "I've confirmed — continue",
+    checking: "Checking…",
+    notYet: "Not confirmed yet. Click the link in the email, then try again.",
+    resend: "Resend email",
+    resendIn: (s: number) => `Resend in ${s}s`,
+    resent: "Confirmation email sent",
+    resendFailed: "Couldn't send the email. Try again in a moment.",
+    useAnother: "Use a different account",
+  },
 };
 
 export type Dict = typeof en;
@@ -956,6 +971,21 @@ const ru: Dict = {
     errEmailInUse: "Аккаунт с таким email уже существует.",
     errWeakPass: "Пароль должен быть не короче 6 символов.",
     errSignUpFailed: "Не удалось зарегистрироваться. Попробуйте ещё раз.",
+  },
+
+  verify: {
+    title: "Подтвердите почту",
+    sentTo: (email: string) => `Мы отправили ссылку для подтверждения на ${email}.`,
+    instruction: "Перейдите по ссылке из письма, затем вернитесь сюда и продолжите.",
+    spam: "Не пришло? Проверьте папку «Спам».",
+    continue: "Я подтвердил — продолжить",
+    checking: "Проверяем…",
+    notYet: "Пока не подтверждено. Перейдите по ссылке из письма и попробуйте снова.",
+    resend: "Отправить ещё раз",
+    resendIn: (s: number) => `Отправить через ${s} с`,
+    resent: "Письмо отправлено",
+    resendFailed: "Не удалось отправить письмо. Попробуйте чуть позже.",
+    useAnother: "Войти под другим аккаунтом",
   },
 };
 

@@ -6,6 +6,7 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   updateProfile,
+  sendEmailVerification,
   onAuthStateChanged,
   AuthError,
 } from "firebase/auth";
@@ -38,8 +39,9 @@ export default function SignUp() {
   const [error,   setError]   = useState("");
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
-  /* Already signed in? Skip sign-up, go to the app. */
-  useEffect(() => onAuthStateChanged(auth, (u) => { if (u) window.location.replace("/app"); }), []);
+  /* Already signed in? Skip sign-up — verified users go to the app, the rest
+     to email confirmation. */
+  useEffect(() => onAuthStateChanged(auth, (u) => { if (u) window.location.replace(u.emailVerified ? "/app" : "/verify-email"); }), []);
 
   const afterAuth = () => { window.location.href = "/app"; };
 
@@ -67,7 +69,9 @@ export default function SignUp() {
       if (form.name.trim()) {
         await updateProfile(cred.user, { displayName: form.name.trim() });
       }
-      afterAuth();
+      // Email accounts must confirm their address before entering the app.
+      try { await sendEmailVerification(cred.user); } catch { /* user can resend on the next screen */ }
+      window.location.href = "/verify-email";
     } catch (e) {
       setError(authMessage(e as AuthError, t));
       setLoading(false);
