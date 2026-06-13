@@ -171,18 +171,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
           {/* Upgrade to Pro — only on the free plan */}
           {plan === "free" && (
-            <a
-              href={proHref}
-              className="sidebar-pro"
-              style={{
-                display:"flex",alignItems:"center",justifyContent:"center",gap:8,
-                padding:"12px 14px",margin:"0 4px 12px",borderRadius:10,
-                background:"linear-gradient(135deg,#C9A84C,#8B6914)",color:"#fff",
-                fontSize:13,fontWeight:600,textDecoration:"none",letterSpacing:"0.01em",
-                boxShadow:"0 6px 18px rgba(176,138,62,0.32)",
-              }}
-            >
-              <IconSpark size={15} /> {t.common.upgradeToPro}
+            <a href={proHref} className="sidebar-pro">
+              <span className="pro-spark"><IconSpark size={15} /></span>
+              {t.common.upgradeToPro}
             </a>
           )}
 

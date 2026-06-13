@@ -32,6 +32,17 @@ interface Result { resultImageUrl: string; styleAdvice: StyleAdvice; remaining: 
 type GItem = { id: string; file?: File; url: string; cat: Category };
 const MAX_GARMENTS = 4;
 
+/* Ready-made garments so a first-timer can try the app without a photo of
+   their own. Tapping one loads it straight into the look. */
+type SampleKey = "sampleTee" | "sampleShirt" | "sampleJacket" | "sampleTrousers" | "sampleDress";
+const SAMPLES: { src: string; cat: Category; key: SampleKey }[] = [
+  { src: "/images/samples/sample-tee.jpg",      cat: "tops",       key: "sampleTee"      },
+  { src: "/images/samples/sample-shirt.jpg",    cat: "tops",       key: "sampleShirt"    },
+  { src: "/images/samples/sample-jacket.jpg",   cat: "tops",       key: "sampleJacket"   },
+  { src: "/images/samples/sample-trousers.jpg", cat: "bottoms",    key: "sampleTrousers" },
+  { src: "/images/samples/sample-dress.jpg",    cat: "one-pieces", key: "sampleDress"    },
+];
+
 const VERDICT = {
   buy:   { color: "#1a7a2e", tag: "tag-green" },
   skip:  { color: "#b71c1c", tag: "tag-red"   },
@@ -203,6 +214,20 @@ export default function TryOnApp() {
     const ok = await addGarmentFromUrl(u);
     if (ok) { setLinkUrl(""); toast(t.app.garmentAdded, "success"); }
     setLinkBusy(false);
+  };
+
+  // Load a bundled sample garment (local asset, fetched straight to a File).
+  const addSample = async (s: (typeof SAMPLES)[number]) => {
+    if (loading || linkBusy) return;
+    if (garments.length >= MAX_GARMENTS) { toast(t.app.upToPieces(MAX_GARMENTS), "error"); return; }
+    try {
+      const res = await fetch(s.src);
+      const blob = await res.blob();
+      const file = new File([blob], "sample.jpg", { type: blob.type || "image/jpeg" });
+      if (addGarment({ file, url: s.src, cat: s.cat })) toast(t.app.garmentAdded, "success");
+    } catch {
+      toast(t.app.couldntLoadLink, "error");
+    }
   };
 
   // Auto-load garment(s) handed off from the Stylist — one piece (?garment=<url>)
@@ -405,6 +430,21 @@ export default function TryOnApp() {
                 >
                   <IconCamera size={18}/> {t.app.snapCamera}
                 </button>
+              )}
+
+              {/* Sample garments — instant first try without your own photo */}
+              {garments.length === 0 && (
+                <div style={{ marginBottom:26 }}>
+                  <p style={{ fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--faint)",marginBottom:12,fontWeight:500 }}>{t.app.trySample}</p>
+                  <div className="sample-row">
+                    {SAMPLES.map((s) => (
+                      <button key={s.src} type="button" className="sample-card" onClick={()=>addSample(s)} disabled={loading||linkBusy}>
+                        <span className="sample-thumb"><img src={s.src} alt={t.app[s.key]} loading="lazy" /></span>
+                        <span className="sample-label">{t.app[s.key]}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
 
               {garments.length > 0 && (

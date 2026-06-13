@@ -17,6 +17,7 @@ export default function Onboarding() {
   ];
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [user, setUser]   = useState<User | null | "loading">("loading");
   const [wasOnboarded, setWasOnboarded] = useState(false);
 
@@ -164,7 +165,9 @@ export default function Onboarding() {
           {/* RIGHT — photo upload */}
           <div className="anim-up-1">
             <input ref={fileRef} type="file" accept="image/*" style={{ display:"none" }}
-              onChange={e=>{ const f=e.target.files?.[0]; if(f) onPhoto(f); }} />
+              onChange={e=>{ const f=e.target.files?.[0]; if(f) onPhoto(f); e.target.value=""; }} />
+            <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display:"none" }}
+              onChange={e=>{ const f=e.target.files?.[0]; if(f) onPhoto(f); e.target.value=""; }} />
             <div
               onClick={()=>fileRef.current?.click()}
               className="upload-zone"
@@ -189,6 +192,15 @@ export default function Onboarding() {
                 </div>
               )}
             </div>
+            {!photo && (
+              <button
+                type="button"
+                onClick={()=>cameraRef.current?.click()}
+                style={{ width:"100%",marginTop:12,padding:"13px",borderRadius:10,border:"1px solid var(--border)",background:"var(--card)",color:"var(--ink)",fontSize:14,fontWeight:500,fontFamily:"'Hanken Grotesk',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9 }}
+              >
+                <IconCamera size={18}/> {t.onboarding.takePhoto}
+              </button>
+            )}
             <p style={{ fontSize:12,color:"var(--faint)",marginTop:14,lineHeight:1.6,textAlign:"center" }}>
               {stepDone ? t.onboarding.lookingGood : t.onboarding.becomesModel}
             </p>
