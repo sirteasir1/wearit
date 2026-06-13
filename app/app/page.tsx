@@ -4,6 +4,7 @@ import Link from "next/link";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import AppShell from "@/lib/app-shell";
+import ShopStrip from "@/lib/shop-strip";
 import {
   getProfile, getTryOns, incTryOns, addWardrobeItem, dataURLToFile, dataURLToThumb,
   pullRemote, creditLimit, WardrobeItem, FREE_MONTHLY,
@@ -31,17 +32,6 @@ type Body = { heightCm: number | null; weightKg: number | null; gender: string }
 interface Result { resultImageUrl: string; styleAdvice: StyleAdvice; remaining: number | "unlimited"; }
 type GItem = { id: string; file?: File; url: string; cat: Category };
 const MAX_GARMENTS = 4;
-
-/* Ready-made garments so a first-timer can try the app without a photo of
-   their own. Tapping one loads it straight into the look. */
-type SampleKey = "sampleTee" | "sampleShirt" | "sampleJacket" | "sampleTrousers" | "sampleDress";
-const SAMPLES: { src: string; cat: Category; key: SampleKey }[] = [
-  { src: "/images/samples/sample-tee.jpg",      cat: "tops",       key: "sampleTee"      },
-  { src: "/images/samples/sample-shirt.jpg",    cat: "tops",       key: "sampleShirt"    },
-  { src: "/images/samples/sample-jacket.jpg",   cat: "tops",       key: "sampleJacket"   },
-  { src: "/images/samples/sample-trousers.jpg", cat: "bottoms",    key: "sampleTrousers" },
-  { src: "/images/samples/sample-dress.jpg",    cat: "one-pieces", key: "sampleDress"    },
-];
 
 const VERDICT = {
   buy:   { color: "#1a7a2e", tag: "tag-green" },
@@ -216,17 +206,19 @@ export default function TryOnApp() {
     setLinkBusy(false);
   };
 
-  // Load a bundled sample garment (local asset, fetched straight to a File).
-  const addSample = async (s: (typeof SAMPLES)[number]) => {
-    if (loading || linkBusy) return;
-    if (garments.length >= MAX_GARMENTS) { toast(t.app.upToPieces(MAX_GARMENTS), "error"); return; }
+  // Add a garment from any source: a remote URL (proxied through fetch-image) or
+  // a local bundled asset (fetched straight to a File). Used by the shop strip.
+  const addGarmentFromSrc = async (src: string, cat: Category): Promise<boolean> => {
+    if (garments.length >= MAX_GARMENTS) { toast(t.app.upToPieces(MAX_GARMENTS), "error"); return false; }
+    if (/^https?:/i.test(src)) return addGarmentFromUrl(src, cat);
     try {
-      const res = await fetch(s.src);
+      const res = await fetch(src);
       const blob = await res.blob();
-      const file = new File([blob], "sample.jpg", { type: blob.type || "image/jpeg" });
-      if (addGarment({ file, url: s.src, cat: s.cat })) toast(t.app.garmentAdded, "success");
+      const file = new File([blob], "garment.jpg", { type: blob.type || "image/jpeg" });
+      return addGarment({ file, url: src, cat });
     } catch {
       toast(t.app.couldntLoadLink, "error");
+      return false;
     }
   };
 
@@ -432,19 +424,9 @@ export default function TryOnApp() {
                 </button>
               )}
 
-              {/* Sample garments — instant first try without your own photo */}
+              {/* Shop strip — real garments to try on or buy, no photo needed */}
               {garments.length === 0 && (
-                <div style={{ marginBottom:26 }}>
-                  <p style={{ fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--faint)",marginBottom:12,fontWeight:500 }}>{t.app.trySample}</p>
-                  <div className="sample-row">
-                    {SAMPLES.map((s) => (
-                      <button key={s.src} type="button" className="sample-card" onClick={()=>addSample(s)} disabled={loading||linkBusy}>
-                        <span className="sample-thumb"><img src={s.src} alt={t.app[s.key]} loading="lazy" /></span>
-                        <span className="sample-label">{t.app[s.key]}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <ShopStrip onTryOn={addGarmentFromSrc} busy={loading || linkBusy} />
               )}
 
               {garments.length > 0 && (
