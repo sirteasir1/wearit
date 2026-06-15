@@ -280,6 +280,11 @@ const en = {
     view: "View",
     tryShort: "Try",
     tryWholeLook: (n: number) => `Try the whole look · ${n} pieces`,
+    weatherNow: "Right now where you are",
+    weatherConds: {
+      clear: "clear", partly: "partly cloudy", overcast: "overcast", fog: "fog",
+      drizzle: "drizzle", rain: "rain", snow: "snow", showers: "showers", thunder: "thunderstorm",
+    } as Record<string, string>,
     // toasts
     connectedToast: (label: string) => `${label} connected`,
     disconnectedToast: (label: string) => `${label} disconnected`,
@@ -785,6 +790,11 @@ const ru: Dict = {
     view: "Открыть",
     tryShort: "Примерить",
     tryWholeLook: (n: number) => `Примерить весь образ · ${n} ${rp(n, ["вещь", "вещи", "вещей"])}`,
+    weatherNow: "Сейчас у вас",
+    weatherConds: {
+      clear: "ясно", partly: "переменная облачность", overcast: "пасмурно", fog: "туман",
+      drizzle: "морось", rain: "дождь", snow: "снег", showers: "ливни", thunder: "гроза",
+    } as Record<string, string>,
     connectedToast: (label: string) => `${label} подключён`,
     disconnectedToast: (label: string) => `${label} отключён`,
     notConfigured: "Этот календарь ещё не настроен (нет ключей OAuth).",

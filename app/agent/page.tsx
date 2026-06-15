@@ -12,6 +12,24 @@ import { useI18n } from "@/lib/i18n";
 
 type RecoState = { busy?: boolean; error?: string; pieces?: Piece[] };
 type Provider = "google" | "notion";
+type Cond = "clear" | "partly" | "overcast" | "fog" | "drizzle" | "rain" | "snow" | "showers" | "thunder";
+type Weather = { tempC: number; cond: Cond; isDay: boolean };
+
+const condEmoji: Record<Cond, string> = {
+  clear: "☀️", partly: "⛅", overcast: "☁️", fog: "🌫️",
+  drizzle: "🌦️", rain: "🌧️", snow: "❄️", showers: "🌧️", thunder: "⛈️",
+};
+
+/* Ask the browser for coordinates (for weather). Resolves null if denied/unavailable. */
+const getCoords = (): Promise<{ lat: number; lon: number } | null> =>
+  new Promise((resolve) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      () => resolve(null),
+      { timeout: 6000, maximumAge: 600_000 },
+    );
+  });
 
 const brief = (wd: WardrobeItem[]): WardrobeBrief[] =>
   wd.map((w) => ({ id: w.id, name: w.name, category: w.category, verdict: w.verdict, score: w.score }));
@@ -41,6 +59,7 @@ export default function AgentPage() {
   const [items, setItems]             = useState<WardrobeItem[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [usingCalendar, setUsing]     = useState(false);
+  const [weather, setWeather]         = useState<Weather | null>(null);
   const [loading, setLoading]         = useState(true);
   const [style, setStyle]             = useState<StyleProfile | null>(null);
   const [learning, setLearning]       = useState(false);
@@ -87,13 +106,16 @@ export default function AgentPage() {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       const token = await auth.currentUser?.getIdToken();
       if (token) headers.Authorization = `Bearer ${token}`;
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      const coords = await getCoords();
       const r = await fetch("/api/agent/suggest", {
         method: "POST", headers,
-        body: JSON.stringify({ now: new Date().toISOString(), wardrobe: brief(wd), style: styleSummary }),
+        body: JSON.stringify({ now: new Date().toISOString(), tz, wardrobe: brief(wd), style: styleSummary, ...(coords || {}) }),
       });
       const d = await r.json();
       setSuggestions(Array.isArray(d.suggestions) ? d.suggestions : []);
       setUsing(!!d.usingCalendar);
+      setWeather(d.weather ?? null);
     } catch {
       setSuggestions([]);
     } finally {
@@ -163,6 +185,21 @@ export default function AgentPage() {
 
   const imgFor = (id: string | null) => (id ? items.find((i) => i.id === id)?.img : undefined);
 
+  /* Format the "when" chip in the browser's OWN timezone — never trust the server clock. */
+  const whenText = (s: Suggestion): string => {
+    if (!s.startIso) return s.when;
+    const d = new Date(s.startIso);
+    if (isNaN(d.getTime())) return s.when;
+    const now = new Date();
+    const key = (x: Date) => x.toLocaleDateString("en-CA"); // YYYY-MM-DD, local
+    const tomorrow = new Date(now.getTime() + 86_400_000);
+    const day = key(d) === key(now) ? "Today"
+      : key(d) === key(tomorrow) ? "Tomorrow"
+      : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    if (s.allDay) return day;
+    return `${day} · ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+  };
+
   return (
     <AppShell>
       <div className="page-in" style={{ padding: "48px 44px", maxWidth: 820 }}>
@@ -173,6 +210,16 @@ export default function AgentPage() {
             <IconWand size={15} /> {learning ? t.agent.learning : t.agent.refresh}
           </button>
         </div>
+
+        {/* Weather — drives the day's outfit suggestions */}
+        {weather && (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--ink)", background: "var(--card)", border: "1px solid var(--border)", padding: "7px 14px", borderRadius: 100, marginBottom: 18 }}>
+            <span style={{ fontSize: 15 }}>{condEmoji[weather.cond]}</span>
+            <span style={{ color: "var(--muted)" }}>{t.agent.weatherNow}:</span>
+            <span style={{ fontWeight: 600 }}>{weather.tempC}°C</span>
+            <span style={{ color: "var(--muted)" }}>· {t.agent.weatherConds[weather.cond]}</span>
+          </div>
+        )}
 
         {/* Learned style — the agent's memory of your taste */}
         {style && style.summary && (
@@ -240,7 +287,7 @@ export default function AgentPage() {
                   )}
                   <div style={{ padding: "20px 22px", flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)", background: "rgba(47,76,110,0.1)", border: "1px solid var(--brand-ring)", padding: "3px 10px", borderRadius: 100 }}>{s.when}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)", background: "rgba(47,76,110,0.1)", border: "1px solid var(--brand-ring)", padding: "3px 10px", borderRadius: 100 }}>{whenText(s)}</span>
                       <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{s.occasion}</span>
                       {s.vibe && <span style={{ fontSize: 12, color: "var(--muted)" }}>· {s.vibe}</span>}
                     </div>

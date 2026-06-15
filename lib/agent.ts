@@ -10,7 +10,9 @@ export interface AgentEvent {
 
 export interface Suggestion {
   id: string;
-  when: string;                 // human label, e.g. "Today · 19:00"
+  when: string;                 // human label, e.g. "Today · 19:00" (server fallback)
+  startIso?: string;            // event start (ISO) — client formats this in the browser's own timezone
+  allDay?: boolean;
   occasion: string;             // what it's for
   vibe: string;                 // e.g. "smart casual"
   message: string;              // proactive line the agent says
