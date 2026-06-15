@@ -31,6 +31,29 @@ const getCoords = (): Promise<{ lat: number; lon: number } | null> =>
     );
   });
 
+type Coords = { lat: number; lon: number };
+const COORDS_KEY = "wearit:coords";
+/* Last-known coords, read synchronously so the page never blocks on the GPS prompt. */
+const cachedCoords = (): Coords | null => {
+  try { const v = localStorage.getItem(COORDS_KEY); return v ? (JSON.parse(v) as Coords) : null; }
+  catch { return null; }
+};
+/* Refresh coords in the background for the next load — never awaited. */
+const refreshCoords = () => {
+  getCoords().then((c) => { if (c) try { localStorage.setItem(COORDS_KEY, JSON.stringify(c)); } catch {} });
+};
+
+/* Stale-while-revalidate cache for the stylist's suggestions (text only, tiny). */
+type AgentCache = { suggestions: Suggestion[]; weather: Weather | null; usingCalendar: boolean };
+const AGENT_KEY = (uid: string) => `wearit:agent:${uid}`;
+const readAgentCache = (uid: string): AgentCache | null => {
+  try { const v = localStorage.getItem(AGENT_KEY(uid)); return v ? (JSON.parse(v) as AgentCache) : null; }
+  catch { return null; }
+};
+const writeAgentCache = (uid: string, c: AgentCache) => {
+  try { localStorage.setItem(AGENT_KEY(uid), JSON.stringify(c)); } catch { /* ignore */ }
+};
+
 const brief = (wd: WardrobeItem[]): WardrobeBrief[] =>
   wd.map((w) => ({ id: w.id, name: w.name, category: w.category, verdict: w.verdict, score: w.score }));
 
@@ -100,24 +123,29 @@ export default function AgentPage() {
     finally { setLearning(false); }
   };
 
-  const load = async (wd: WardrobeItem[], styleSummary: string) => {
-    setLoading(true);
+  const load = async (wd: WardrobeItem[], styleSummary: string, showSkeleton = true) => {
+    if (showSkeleton) setLoading(true);
+    refreshCoords(); // background — updates the cache for next time, never blocks this load
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       const token = await auth.currentUser?.getIdToken();
       if (token) headers.Authorization = `Bearer ${token}`;
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-      const coords = await getCoords();
+      const coords = cachedCoords(); // instant; server falls back to edge geo if absent
       const r = await fetch("/api/agent/suggest", {
         method: "POST", headers,
         body: JSON.stringify({ now: new Date().toISOString(), tz, wardrobe: brief(wd), style: styleSummary, ...(coords || {}) }),
       });
       const d = await r.json();
-      setSuggestions(Array.isArray(d.suggestions) ? d.suggestions : []);
+      const sugg: Suggestion[] = Array.isArray(d.suggestions) ? d.suggestions : [];
+      const weather: Weather | null = d.weather ?? null;
+      setSuggestions(sugg);
       setUsing(!!d.usingCalendar);
-      setWeather(d.weather ?? null);
+      setWeather(weather);
+      const id = auth.currentUser?.uid;
+      if (id) writeAgentCache(id, { suggestions: sugg, weather, usingCalendar: !!d.usingCalendar });
     } catch {
-      setSuggestions([]);
+      if (showSkeleton) setSuggestions([]);
     } finally {
       setLoading(false);
     }
@@ -169,12 +197,20 @@ export default function AgentPage() {
     setItems(wd);
     let s = getStyleProfile(u.uid);
     setStyle(s);
+    // Instant paint from the last result — then revalidate quietly (stale-while-revalidate).
+    const cached = readAgentCache(u.uid);
+    if (cached) {
+      setSuggestions(cached.suggestions || []);
+      setWeather(cached.weather ?? null);
+      setUsing(!!cached.usingCalendar);
+      setLoading(false);
+    }
     loadIntegrations();
     // (re)learn if we've never learned, or the wardrobe changed since
     if (wd.length > 0 && (!s || s.basedOn !== wd.length)) {
       s = await learnStyle(u.uid, wd);
     }
-    load(wd, s?.summary || "");
+    load(wd, s?.summary || "", !cached);
   }), []);
 
   const refresh = async () => {

@@ -125,6 +125,10 @@ export async function POST(req: NextRequest) {
     if (Number.isFinite(hLat) && Number.isFinite(hLon)) { lat = hLat; lon = hLon; }
   }
 
+  // Kick off the weather fetch now so it overlaps the calendar round-trips.
+  const weatherP: Promise<Weather | null> =
+    lat !== null && lon !== null ? getWeather(lat, lon) : Promise.resolve(null);
+
   // Per-user calendars first (Google + Notion, via their stored OAuth tokens).
   let events: AgentEvent[] = [];
   const authHeader = req.headers.get("authorization");
@@ -140,7 +144,7 @@ export async function POST(req: NextRequest) {
   const usingCalendar = events.length > 0;
   if (!usingCalendar) events = defaultEvents(now, tz);
 
-  const weather = lat !== null && lon !== null ? await getWeather(lat, lon) : null;
+  const weather = await weatherP;
 
   const suggestions = await buildSuggestions(events, wardrobe, now, tz, style, weather);
   return NextResponse.json({ suggestions, usingCalendar, weather });
