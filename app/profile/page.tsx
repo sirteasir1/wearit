@@ -6,7 +6,7 @@ import { auth } from "@/lib/firebase";
 import AppShell from "@/lib/app-shell";
 import {
   getProfile, getWardrobe, getTryOns, getSettings, saveSettings,
-  getPlan, creditLimit, FREE_MONTHLY, PRO_MONTHLY, UserProfile, UserSettings, defaultSettings,
+  getPlan, creditsRemaining, creditTotal, FREE_MONTHLY, PRO_MONTHLY, UserProfile, UserSettings, defaultSettings,
 } from "@/lib/store";
 
 const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
@@ -20,7 +20,7 @@ export default function Profile() {
   const [editing, setEditing]   = useState(false);
   const [name, setName]         = useState("");
   const [profile, setProfile]   = useState<UserProfile | null>(null);
-  const [stats, setStats]       = useState({ wardrobe: 0, tryons: 0, favorites: 0, left: FREE_MONTHLY });
+  const [stats, setStats]       = useState({ wardrobe: 0, tryons: 0, favorites: 0, left: FREE_MONTHLY, total: FREE_MONTHLY });
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [plan, setPlan]         = useState<"free" | "pro">("free");
   const [showPro, setShowPro]   = useState(false);
@@ -39,7 +39,8 @@ export default function Profile() {
       wardrobe: wd.length,
       tryons: tn,
       favorites: wd.filter(i => i.fav).length,
-      left: Math.max(0, creditLimit(u.uid) - tn),
+      left: creditsRemaining(u.uid),
+      total: creditTotal(u.uid),
     });
   }), []);
 
@@ -111,7 +112,7 @@ export default function Profile() {
               </div>
             )}
             <div style={{ display:"flex",alignItems:"center",gap:10,marginTop:12,flexWrap:"wrap" }}>
-              <span style={{ fontSize:12,fontWeight:600,letterSpacing:"0.04em",color:"var(--gold)",background:"rgba(176,138,62,0.1)",border:"1px solid rgba(176,138,62,0.3)",padding:"4px 11px",borderRadius:100 }}>{t.profile.freePlanBadge}</span>
+              <span style={{ fontSize:12,fontWeight:600,letterSpacing:"0.04em",color:"var(--gold)",background:"rgba(176,138,62,0.1)",border:"1px solid rgba(176,138,62,0.3)",padding:"4px 11px",borderRadius:100 }}>{plan === "pro" ? t.profile.proPlanBadge : t.profile.freePlanBadge}</span>
               <span style={{ fontSize:13,color:"var(--muted)" }}>{t.profile.memberSince(memberSince)}</span>
             </div>
           </div>
@@ -130,7 +131,7 @@ export default function Profile() {
                     <circle className="ring-track" cx="39" cy="39" r="32" strokeWidth="6"/>
                     <circle className="ring-fill" cx="39" cy="39" r="32" strokeWidth="6"
                       strokeDasharray={2*Math.PI*32}
-                      strokeDashoffset={2*Math.PI*32*(1 - Math.min(1, s.val/FREE_MONTHLY))}/>
+                      strokeDashoffset={2*Math.PI*32*(1 - Math.min(1, s.val/Math.max(1, stats.total)))}/>
                   </svg>
                   <div style={{ position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center" }}>
                     <span className="serif" style={{ fontSize:28,fontWeight:600,color:"var(--brand)",letterSpacing:"-0.03em" }}>{s.val}</span>
@@ -201,7 +202,7 @@ export default function Profile() {
           <div>
             <p style={{ fontSize:11,color:"rgba(255,255,255,0.35)",letterSpacing:"0.1em",marginBottom:8,fontWeight:500 }}>{t.profile.currentPlan}</p>
             <p style={{ fontSize:22,fontWeight:500,color:"#fff",marginBottom:4 }}>{plan === "pro" ? t.profile.pro : t.profile.free}</p>
-            <p style={{ fontSize:14,color:"rgba(255,255,255,0.45)",fontWeight:300 }}>{t.profile.planSummary(plan === "pro" ? PRO_MONTHLY : FREE_MONTHLY, stats.left)}</p>
+            <p style={{ fontSize:14,color:"rgba(255,255,255,0.45)",fontWeight:300 }}>{t.profile.planSummary(stats.total, stats.left)}</p>
           </div>
           {plan === "pro" ? (
             <span style={{ display:"inline-flex",alignItems:"center",gap:8,background:"rgba(176,138,62,0.18)",color:"#FFD9A8",border:"1px solid rgba(176,138,62,0.4)",borderRadius:100,padding:"10px 20px",fontSize:13,fontWeight:600,letterSpacing:"0.04em" }}>

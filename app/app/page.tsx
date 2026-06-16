@@ -6,8 +6,8 @@ import { auth } from "@/lib/firebase";
 import AppShell from "@/lib/app-shell";
 import ShopStrip from "@/lib/shop-strip";
 import {
-  getProfile, getTryOns, incTryOns, addWardrobeItem, dataURLToFile, dataURLToThumb,
-  pullRemote, creditLimit, WardrobeItem, FREE_MONTHLY,
+  getProfile, incTryOns, addWardrobeItem, dataURLToFile, dataURLToThumb,
+  pullRemote, creditsRemaining, WardrobeItem, FREE_MONTHLY,
 } from "@/lib/store";
 
 const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
@@ -137,7 +137,7 @@ export default function TryOnApp() {
     const p = getProfile(u.uid);
     setPhoto(p.photo);
     setBody({ heightCm: p.heightCm, weightKg: p.weightKg, gender: p.gender });
-    setCredits(Math.max(0, creditLimit(u.uid) - getTryOns(u.uid)));
+    setCredits(creditsRemaining(u.uid));
   }), []);
 
   useEffect(() => {
@@ -273,7 +273,7 @@ export default function TryOnApp() {
       setProg(100);
       await new Promise(res => setTimeout(res, 300));
       setResult(d);
-      if (uid) { const n = incTryOns(uid, cost); setCredits(Math.max(0, creditLimit(uid) - n)); }
+      if (uid) { incTryOns(uid, cost); setCredits(creditsRemaining(uid)); }
     } catch (e) {
       setError(e instanceof Error ? e.message : t.app.somethingWrong);
     } finally {
@@ -310,10 +310,29 @@ export default function TryOnApp() {
   };
 
   const downloadImage = async () => {
+    // Mobile (esp. iOS Safari) ignores the <a download> attribute, so the photo
+    // never lands in the gallery. The native share sheet offers "Save Image" /
+    // "Сохранить в Фото", which writes the real file to the phone's gallery.
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+      try {
+        const file = await getResultFile();
+        const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+        if (nav.canShare && nav.canShare({ files: [file] })) {
+          await nav.share({ files: [file], title: "Wearit" });
+          return;
+        }
+      } catch { /* user cancelled or unsupported — fall through to download */ }
+    }
+
+    // Desktop / fallback: download via an object URL so the data URL saves reliably.
+    const file = await getResultFile();
+    const url = URL.createObjectURL(file);
     const a = document.createElement("a");
-    a.href = result!.resultImageUrl;
+    a.href = url;
     a.download = "wearit-look.jpg";
     document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   /* Native share sheet with the actual image (Instagram / TikTok / WhatsApp on mobile) */

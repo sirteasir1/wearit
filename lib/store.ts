@@ -132,6 +132,9 @@ export async function pullRemote(uid: string): Promise<void> {
   if (typeof r.tryons === "number") {
     write(TRYON_KEY(uid), Math.max(getTryOns(uid), r.tryons));
   }
+  if (typeof r.bonusCredits === "number") {
+    write(BONUS_KEY(uid), Math.max(getBonusCredits(uid), r.bonusCredits));
+  }
   if (r.plan === "pro" || r.plan === "free") {
     write(PLAN_KEY(uid), r.plan);
   }
@@ -203,14 +206,28 @@ export function saveStyleProfile(uid: string, s: StyleProfile) {
   void saveUserDoc(uid, { style: s });
 }
 
-/* Plan + credit limit */
+/* Plan + credits.
+   Credits are an accumulating balance: everyone starts with FREE_MONTHLY base
+   credits, and each Pro payment adds PRO_MONTHLY bonus credits on top (granted
+   server-side by the Polar webhook). Remaining = base + bonus − used.
+   Both bonus and tryons only ever grow, so they merge safely via Math.max. */
 export type Plan = "free" | "pro";
-const PLAN_KEY = (uid: string) => `wearit:plan:${uid}`;
+const PLAN_KEY  = (uid: string) => `wearit:plan:${uid}`;
+const BONUS_KEY = (uid: string) => `wearit:bonus:${uid}`;
 export function getPlan(uid: string): Plan {
   return read<Plan>(PLAN_KEY(uid), "free");
 }
-export function creditLimit(uid: string): number {
-  return getPlan(uid) === "pro" ? PRO_MONTHLY : FREE_MONTHLY;
+/* Purchased credits granted on top of the free base (0 for never-paid users). */
+export function getBonusCredits(uid: string): number {
+  return read<number>(BONUS_KEY(uid), 0);
+}
+/* Total credits ever available to the user (free base + everything purchased). */
+export function creditTotal(uid: string): number {
+  return FREE_MONTHLY + getBonusCredits(uid);
+}
+/* Credits the user can still spend right now. */
+export function creditsRemaining(uid: string): number {
+  return Math.max(0, creditTotal(uid) - getTryOns(uid));
 }
 
 /* Try-on counter */
