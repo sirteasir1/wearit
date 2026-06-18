@@ -11,6 +11,7 @@ import {
   AuthError,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { setPendingReferral } from "@/lib/store";
 import { useI18n, LangSwitch, type Dict } from "@/lib/i18n";
 
 function authMessage(err: AuthError, t: Dict): string {
@@ -38,6 +39,12 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  /* Stash an invite code (/signup?ref=<uid>) so it can be claimed after sign-up. */
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref) setPendingReferral(ref);
+  }, []);
 
   /* Already signed in? Skip sign-up — verified users go to the app, the rest
      to email confirmation. */

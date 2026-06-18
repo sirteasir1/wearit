@@ -10,7 +10,7 @@ import {
 } from "@/lib/store";
 
 const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
-import { IconArrowRight, IconCheck } from "@/lib/icons";
+import { IconArrowRight, IconCheck, IconLink, IconShare } from "@/lib/icons";
 import { toast } from "@/lib/toast";
 import { useI18n } from "@/lib/i18n";
 
@@ -216,6 +216,38 @@ export default function Profile() {
             </button>
           )}
         </div>
+
+        {/* Invite friends — referral loop (give 3, get 3) */}
+        {user && (() => {
+          const link = `${typeof window !== "undefined" ? window.location.origin : ""}/signup?ref=${user.uid}`;
+          const copy = async () => {
+            try { await navigator.clipboard.writeText(link); toast(t.profile.inviteCopied, "success"); }
+            catch { toast(t.profile.inviteCopyFailed, "error"); }
+          };
+          const share = async () => {
+            const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
+            if (nav.share) { try { await nav.share({ title: "Wearit", text: t.profile.inviteShareMessage, url: link }); return; } catch { /* cancelled */ } }
+            copy();
+          };
+          return (
+            <div style={{ border:"1px solid var(--border)",borderRadius:16,padding:"22px 24px",marginBottom:16,background:"var(--card)" }}>
+              <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:6 }}>
+                <span style={{ color:"var(--gold)" }}><IconShare size={18}/></span>
+                <h3 style={{ fontSize:17,fontWeight:600,color:"var(--ink)" }}>{t.profile.inviteTitle}</h3>
+              </div>
+              <p style={{ fontSize:14,color:"var(--muted)",fontWeight:300,lineHeight:1.6,marginBottom:16 }}>{t.profile.inviteBody}</p>
+              <div className="linkbar" style={{ marginBottom:0 }}>
+                <input value={link} readOnly onFocus={(e)=>e.currentTarget.select()} style={{ fontSize:13 }} />
+                <button className="btn-dark" onClick={copy} style={{ padding:"0 16px",borderRadius:8,display:"flex",alignItems:"center",gap:7,fontSize:14 }}>
+                  <IconLink size={15}/> {t.profile.inviteCopy}
+                </button>
+                <button className="btn-dark" onClick={share} aria-label={t.profile.inviteShare} style={{ padding:"0 14px",borderRadius:8,display:"flex",alignItems:"center" }}>
+                  <IconShare size={16}/>
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         {showPro && (
           <ProModal

@@ -4,7 +4,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { getProfile, pullRemote, getPlan, Plan } from "@/lib/store";
+import { getProfile, pullRemote, getPlan, claimPendingReferral, Plan } from "@/lib/store";
+import { toast } from "@/lib/toast";
 import { IconSpark, IconHanger, IconUser, IconSignOut, IconPanel, IconWand, IconBattle } from "@/lib/icons";
 import { useI18n, LangSwitch } from "@/lib/i18n";
 
@@ -70,6 +71,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
         didInitialSync = true;
       }
       if (cancelled) return;
+      // Claim a pending referral (fire-and-forget): grants credits to both sides once.
+      claimPendingReferral(user.uid).then((credited) => {
+        if (credited && !cancelled) toast(t.common.referralCredited, "success");
+      });
       const p = getProfile(user.uid);
       setPhoto(p.photo);
       setPlan(getPlan(user.uid));

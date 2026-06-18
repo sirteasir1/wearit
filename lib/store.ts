@@ -8,7 +8,7 @@
    (fall back to localStorage) if Firestore isn't reachable.
    ────────────────────────────────────────────────────────── */
 
-import { db } from "./firebase";
+import { auth, db } from "./firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export interface UserProfile {
@@ -220,6 +220,49 @@ export function getPlan(uid: string): Plan {
 /* Pro-only features (e.g. the AI stylist) are locked during the trial. */
 export function isPro(uid: string): boolean {
   return getPlan(uid) === "pro";
+}
+
+/* ── Referrals ──────────────────────────────────────────────
+   A referral link is /signup?ref=<referrerUid>. The code is stashed here at
+   signup and claimed once the new user is authenticated; the server grants
+   credits to BOTH sides and marks the referee so it can never be claimed twice. */
+const REF_KEY = "wearit:ref";
+export function setPendingReferral(code: string) {
+  if (typeof window === "undefined" || !code) return;
+  try { localStorage.setItem(REF_KEY, code); } catch { /* ignore */ }
+}
+export function getPendingReferral(): string | null {
+  if (typeof window === "undefined") return null;
+  try { return localStorage.getItem(REF_KEY); } catch { return null; }
+}
+function clearPendingReferral() {
+  try { localStorage.removeItem(REF_KEY); } catch { /* ignore */ }
+}
+/* Claim any pending referral for this user. Safe to call on every load: it
+   no-ops without a pending code, clears the code on any definitive answer
+   (credited / invalid / already-claimed), and only retries on network errors. */
+export async function claimPendingReferral(uid: string): Promise<boolean> {
+  const code = getPendingReferral();
+  if (!code || code === uid) { clearPendingReferral(); return false; }
+  try {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) return false; // not ready yet — keep the code, try again next load
+    const r = await fetch("/api/referral/claim", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ref: code }),
+    });
+    if (r.status >= 500) return false; // server hiccup — keep the code for a retry
+    clearPendingReferral();
+    const d = await r.json().catch(() => ({} as { credited?: boolean; bonusCredits?: number }));
+    if (d.credited && typeof d.bonusCredits === "number") {
+      write(BONUS_KEY(uid), Math.max(getBonusCredits(uid), d.bonusCredits));
+      return true;
+    }
+    return false;
+  } catch {
+    return false; // network error — keep the code
+  }
 }
 /* Purchased credits granted on top of the free base (0 for never-paid users). */
 export function getBonusCredits(uid: string): number {
