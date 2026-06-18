@@ -7,7 +7,7 @@ import AppShell from "@/lib/app-shell";
 import ShopStrip from "@/lib/shop-strip";
 import {
   getProfile, incTryOns, addWardrobeItem, dataURLToFile, dataURLToThumb,
-  pullRemote, creditsRemaining, getPlan, Plan, WardrobeItem, FREE_MONTHLY,
+  pullRemote, creditsRemaining, getPlan, Plan, WardrobeItem, FREE_MONTHLY, PRO_MONTHLY,
 } from "@/lib/store";
 
 const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
@@ -117,6 +117,7 @@ export default function TryOnApp() {
   const [drag, setDrag]       = useState(false);
   const [credits, setCredits] = useState(FREE_MONTHLY);
   const [plan, setPlan]       = useState<Plan>("free");
+  const [showPaywall, setShowPaywall] = useState(false);
   const [body, setBody]       = useState<Body>({ heightCm: null, weightKg: null, gender: "" });
   const [linkUrl, setLinkUrl] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
@@ -275,7 +276,14 @@ export default function TryOnApp() {
       setProg(100);
       await new Promise(res => setTimeout(res, 300));
       setResult(d);
-      if (uid) { incTryOns(uid, cost); setCredits(creditsRemaining(uid)); }
+      if (uid) {
+        incTryOns(uid, cost);
+        const left = creditsRemaining(uid);
+        setCredits(left);
+        // Reverse-trial moment: the free try-on just ran out — let them admire the
+        // result for a beat, then bring up the paywall to start the trial.
+        if (left <= 0 && plan === "free") setTimeout(() => setShowPaywall(true), 1400);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : t.app.somethingWrong);
     } finally {
@@ -518,9 +526,9 @@ export default function TryOnApp() {
 
               {credits <= 0 ? (
                 plan === "free" ? (
-                  <a href={checkoutHref(uid, email)} className="btn-dark" style={{ width:"100%",padding:"16px",fontSize:15,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+                  <button onClick={() => setShowPaywall(true)} className="btn-dark" style={{ width:"100%",padding:"16px",fontSize:15,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:8,cursor:"pointer" }}>
                     {t.app.outOfCreditsUpgrade} <IconArrowRight size={16}/>
-                  </a>
+                  </button>
                 ) : (
                   /* Trial/Pro already have an active subscription — never send them to a second checkout. */
                   <div style={{ width:"100%",padding:"16px",fontSize:14,borderRadius:8,background:"var(--surface)",border:"1px solid var(--border)",color:"var(--muted)",textAlign:"center",lineHeight:1.6 }}>
@@ -667,6 +675,55 @@ export default function TryOnApp() {
           </div>
         )}
       </div>
+
+      {showPaywall && plan === "free" && (
+        <PaywallModal onClose={() => setShowPaywall(false)} checkoutHref={checkoutHref(uid, email)} />
+      )}
     </AppShell>
+  );
+}
+
+/* Reverse-trial paywall — pops once the free try-on is spent, with the Free vs Pro
+   comparison and a single CTA into the 3-day free trial checkout. */
+function PaywallModal({ onClose, checkoutHref }: { onClose: () => void; checkoutHref: string }) {
+  const { t } = useI18n();
+  const ROWS = t.profile.proRows(FREE_MONTHLY, PRO_MONTHLY);
+  return (
+    <div
+      onClick={onClose}
+      style={{ position:"fixed",inset:0,zIndex:60,background:"rgba(20,16,10,0.55)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",padding:18 }}>
+      <div
+        onClick={(e)=>e.stopPropagation()}
+        className="anim-up"
+        style={{ width:"100%",maxWidth:460,maxHeight:"90vh",overflowY:"auto",background:"var(--ink)",borderRadius:18,padding:"28px 26px",position:"relative",boxShadow:"0 30px 80px rgba(0,0,0,0.4)" }}>
+        <button onClick={onClose} aria-label={t.common.close} style={{ position:"absolute",top:16,right:16,width:30,height:30,borderRadius:100,border:"1px solid rgba(255,255,255,0.18)",background:"transparent",color:"rgba(255,255,255,0.7)",cursor:"pointer",fontSize:17,lineHeight:1,padding:0 }}>×</button>
+
+        <p style={{ fontSize:11,letterSpacing:"0.14em",color:"#FFD9A8",fontWeight:600,marginBottom:8 }}>{t.app.paywallEyebrow}</p>
+        <h2 className="serif" style={{ fontSize:30,fontWeight:600,color:"#fff",letterSpacing:"-0.03em",marginBottom:8 }}>{t.app.paywallTitle}</h2>
+        <p style={{ fontSize:14,color:"rgba(255,255,255,0.55)",fontWeight:300,lineHeight:1.6,marginBottom:22 }}>{t.app.paywallBody}</p>
+
+        {/* Free vs Pro comparison */}
+        <div style={{ border:"1px solid rgba(255,255,255,0.12)",borderRadius:12,overflow:"hidden",marginBottom:22 }}>
+          <div style={{ display:"grid",gridTemplateColumns:"1.3fr 0.9fr 1.1fr",padding:"10px 14px",fontSize:11,letterSpacing:"0.06em",color:"rgba(255,255,255,0.4)",borderBottom:"1px solid rgba(255,255,255,0.1)",fontWeight:600 }}>
+            <span></span><span>{t.profile.proFree}</span><span style={{ color:"#FFD9A8" }}>{t.profile.proPro}</span>
+          </div>
+          {ROWS.map(([label, free, pro, hot], i) => (
+            <div key={label} style={{ display:"grid",gridTemplateColumns:"1.3fr 0.9fr 1.1fr",alignItems:"center",padding:"11px 14px",borderBottom:i<ROWS.length-1?"1px solid rgba(255,255,255,0.07)":undefined,background:hot?"rgba(176,138,62,0.08)":undefined }}>
+              <span style={{ fontSize:13,color:"rgba(255,255,255,0.85)",fontWeight:hot?500:400 }}>{label}</span>
+              <span style={{ fontSize:12.5,color:"rgba(255,255,255,0.4)" }}>{free}</span>
+              <span style={{ fontSize:12.5,color:hot?"#FFD9A8":"rgba(255,255,255,0.85)",fontWeight:hot?600:400,display:"flex",alignItems:"center",gap:5 }}>
+                {hot && <IconCheck size={13}/>}{pro}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <a href={checkoutHref}
+          style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"#fff",color:"var(--ink)",borderRadius:8,padding:"15px",fontSize:15,fontWeight:600,textDecoration:"none" }}>
+          {t.app.paywallCta} <IconArrowRight size={16}/>
+        </a>
+        <p style={{ textAlign:"center",fontSize:12,color:"rgba(255,255,255,0.4)",marginTop:12 }}>{t.app.paywallFinePrint}</p>
+      </div>
+    </div>
   );
 }
