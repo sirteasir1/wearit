@@ -30,8 +30,8 @@ export interface WardrobeItem {
   createdAt: number;
 }
 
-export const FREE_MONTHLY = 4;          // free credits (1 credit = 1 generation)
-export const PRO_MONTHLY  = 40;         // Pro = 10× the free plan
+export const FREE_MONTHLY = 1;          // reverse trial: 1 free try-on (no card), then the paywall
+export const PRO_MONTHLY  = 40;         // Pro = 40 credits per paid cycle
 
 export const emptyProfile: UserProfile = {
   onboarded: false,
@@ -135,7 +135,7 @@ export async function pullRemote(uid: string): Promise<void> {
   if (typeof r.bonusCredits === "number") {
     write(BONUS_KEY(uid), Math.max(getBonusCredits(uid), r.bonusCredits));
   }
-  if (r.plan === "pro" || r.plan === "free") {
+  if (r.plan === "pro" || r.plan === "free" || r.plan === "trial") {
     write(PLAN_KEY(uid), r.plan);
   }
   if (r.style && typeof r.style === "object") {
@@ -211,11 +211,15 @@ export function saveStyleProfile(uid: string, s: StyleProfile) {
    credits, and each Pro payment adds PRO_MONTHLY bonus credits on top (granted
    server-side by the Polar webhook). Remaining = base + bonus − used.
    Both bonus and tryons only ever grow, so they merge safely via Math.max. */
-export type Plan = "free" | "pro";
+export type Plan = "free" | "trial" | "pro";
 const PLAN_KEY  = (uid: string) => `wearit:plan:${uid}`;
 const BONUS_KEY = (uid: string) => `wearit:bonus:${uid}`;
 export function getPlan(uid: string): Plan {
   return read<Plan>(PLAN_KEY(uid), "free");
+}
+/* Pro-only features (e.g. the AI stylist) are locked during the trial. */
+export function isPro(uid: string): boolean {
+  return getPlan(uid) === "pro";
 }
 /* Purchased credits granted on top of the free base (0 for never-paid users). */
 export function getBonusCredits(uid: string): number {

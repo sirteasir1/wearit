@@ -7,7 +7,7 @@ import AppShell from "@/lib/app-shell";
 import ShopStrip from "@/lib/shop-strip";
 import {
   getProfile, incTryOns, addWardrobeItem, dataURLToFile, dataURLToThumb,
-  pullRemote, creditsRemaining, WardrobeItem, FREE_MONTHLY,
+  pullRemote, creditsRemaining, getPlan, Plan, WardrobeItem, FREE_MONTHLY,
 } from "@/lib/store";
 
 const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
@@ -116,6 +116,7 @@ export default function TryOnApp() {
   const [saved, setSaved]     = useState(false);
   const [drag, setDrag]       = useState(false);
   const [credits, setCredits] = useState(FREE_MONTHLY);
+  const [plan, setPlan]       = useState<Plan>("free");
   const [body, setBody]       = useState<Body>({ heightCm: null, weightKg: null, gender: "" });
   const [linkUrl, setLinkUrl] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
@@ -138,6 +139,7 @@ export default function TryOnApp() {
     setPhoto(p.photo);
     setBody({ heightCm: p.heightCm, weightKg: p.weightKg, gender: p.gender });
     setCredits(creditsRemaining(u.uid));
+    setPlan(getPlan(u.uid));
   }), []);
 
   useEffect(() => {
@@ -515,9 +517,16 @@ export default function TryOnApp() {
               )}
 
               {credits <= 0 ? (
-                <a href={checkoutHref(uid, email)} className="btn-dark" style={{ width:"100%",padding:"16px",fontSize:15,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
-                  {t.app.outOfCreditsUpgrade} <IconArrowRight size={16}/>
-                </a>
+                plan === "free" ? (
+                  <a href={checkoutHref(uid, email)} className="btn-dark" style={{ width:"100%",padding:"16px",fontSize:15,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+                    {t.app.outOfCreditsUpgrade} <IconArrowRight size={16}/>
+                  </a>
+                ) : (
+                  /* Trial/Pro already have an active subscription — never send them to a second checkout. */
+                  <div style={{ width:"100%",padding:"16px",fontSize:14,borderRadius:8,background:"var(--surface)",border:"1px solid var(--border)",color:"var(--muted)",textAlign:"center",lineHeight:1.6 }}>
+                    {plan === "trial" ? t.app.trialCreditsUsed : t.app.proCreditsUsed}
+                  </div>
+                )
               ) : (
                 <button className={`btn-dark${garments.length>0&&!loading?" btn-ready":""}`} onClick={generate} disabled={garments.length===0||loading}
                   style={{ width:"100%",padding:"16px",fontSize:15,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:10 }}>

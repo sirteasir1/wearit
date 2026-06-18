@@ -169,8 +169,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
             ))}
           </nav>
 
-          {/* Upgrade to Pro — only on the free plan */}
-          {plan === "free" && (
+          {/* Upgrade to Pro — shown on free and during the trial */}
+          {plan !== "pro" && (
             <a href={proHref} className="sidebar-pro">
               <span className="pro-spark"><IconSpark size={15} /></span>
               {t.common.upgradeToPro}
@@ -194,7 +194,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </div>
               <div style={{ minWidth:0 }}>
                 <div style={{ fontSize:13,fontWeight:500,color:"var(--ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{displayName}</div>
-                <div style={{ fontSize:11,color:"var(--muted)" }}>{plan === "pro" ? t.common.proPlan : t.common.freePlan}</div>
+                <div style={{ fontSize:11,color:"var(--muted)" }}>{plan === "pro" ? t.common.proPlan : plan === "trial" ? t.common.trialPlan : t.common.freePlan}</div>
               </div>
             </Link>
             <button

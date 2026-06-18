@@ -4,9 +4,17 @@ import Link from "next/link";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import AppShell from "@/lib/app-shell";
-import { getWardrobe, getProfile, getStyleProfile, saveStyleProfile, WardrobeItem, StyleProfile } from "@/lib/store";
+import { getWardrobe, getProfile, getStyleProfile, saveStyleProfile, getPlan, pullRemote, Plan, WardrobeItem, StyleProfile } from "@/lib/store";
 import type { Suggestion, WardrobeBrief, Piece } from "@/lib/agent";
-import { IconWand, IconSpark, IconHanger, IconSearch } from "@/lib/icons";
+import { IconWand, IconSpark, IconHanger, IconSearch, IconArrowRight } from "@/lib/icons";
+
+const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
+function checkoutHref(uid: string | null, email: string | null): string {
+  if (uid && PRO_PRODUCT) {
+    return `/api/checkout?products=${PRO_PRODUCT}&customerExternalId=${uid}&customerEmail=${encodeURIComponent(email || "")}`;
+  }
+  return "/#pricing";
+}
 import { toast } from "@/lib/toast";
 import { useI18n } from "@/lib/i18n";
 
@@ -79,6 +87,9 @@ export default function AgentPage() {
     return `/app?${q}`;
   };
   const [uid, setUid]                 = useState<string | null>(null);
+  const [email, setEmail]             = useState<string | null>(null);
+  const [plan, setPlanState]          = useState<Plan>("free");
+  const [planKnown, setPlanKnown]     = useState(false);
   const [items, setItems]             = useState<WardrobeItem[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [usingCalendar, setUsing]     = useState(false);
@@ -193,6 +204,16 @@ export default function AgentPage() {
   useEffect(() => onAuthStateChanged(auth, async (u) => {
     if (!u) return;
     setUid(u.uid);
+    setEmail(u.email);
+
+    // The AI stylist is Pro-only — locked on free and during the trial. Re-sync the
+    // plan from Firestore first so a just-upgraded user isn't shown a stale lock.
+    let p = getPlan(u.uid);
+    if (p !== "pro") { await pullRemote(u.uid); p = getPlan(u.uid); }
+    setPlanState(p);
+    setPlanKnown(true);
+    if (p !== "pro") { setLoading(false); return; }
+
     const wd = getWardrobe(u.uid);
     setItems(wd);
     let s = getStyleProfile(u.uid);
@@ -235,6 +256,29 @@ export default function AgentPage() {
     if (s.allDay) return day;
     return `${day} · ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
   };
+
+  /* Pro-only gate — free and trial users see an upgrade screen instead of the stylist. */
+  if (planKnown && plan !== "pro") {
+    return (
+      <AppShell>
+        <div className="page-in" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 28px" }}>
+          <div style={{ maxWidth: 460, textAlign: "center" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 64, height: 64, borderRadius: 18, background: "var(--card)", border: "1px solid var(--border)", color: "var(--brand)", marginBottom: 22 }}>
+              <IconWand size={28} />
+            </div>
+            <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--gold)", marginBottom: 12, fontWeight: 600 }}>{t.agent.lockedEyebrow}</p>
+            <h1 className="serif" style={{ fontSize: 34, fontWeight: 600, letterSpacing: "-0.03em", color: "var(--ink)", marginBottom: 12 }}>{t.agent.lockedTitle}</h1>
+            <p style={{ fontSize: 15, color: "var(--muted)", lineHeight: 1.7, fontWeight: 300, marginBottom: 28 }}>
+              {plan === "trial" ? t.agent.lockedBodyTrial : t.agent.lockedBodyFree}
+            </p>
+            <a href={checkoutHref(uid, email)} className="btn-dark" style={{ padding: "14px 30px", fontSize: 15, borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 9 }}>
+              <IconSpark size={17} /> {t.agent.lockedCta} <IconArrowRight size={16} />
+            </a>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
