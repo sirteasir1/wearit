@@ -280,15 +280,28 @@ export default function TryOnApp() {
       if (body.heightCm) fd.append("heightCm", String(body.heightCm));
       if (body.weightKg) fd.append("weightKg", String(body.weightKg));
       if (body.gender)   fd.append("gender", body.gender);
-      const r = await fetch("/api/tryon-demo", { method: "POST", body: fd });
+      const token = await auth.currentUser?.getIdToken();
+      const r = await fetch("/api/tryon-demo", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: fd,
+      });
       const d = await r.json();
+      // 402 = server says out of credits (the authoritative check) — surface the paywall.
+      if (r.status === 402) {
+        if (uid) { incTryOns(uid, cost); setCredits(0); }
+        if (plan === "free") setShowPaywall(true); else setError(t.app.outOfCredits);
+        return;
+      }
       if (!r.ok) throw new Error(d.error || t.app.failed);
       setProg(100);
       await new Promise(res => setTimeout(res, 300));
       setResult(d);
       if (uid) {
+        // The server already decremented the balance; trust its number, and mirror
+        // it into the local cache so the badge/gate stay in sync.
         incTryOns(uid, cost);
-        const left = creditsRemaining(uid);
+        const left = typeof d.remaining === "number" ? d.remaining : creditsRemaining(uid);
         setCredits(left);
         // Reverse-trial moment: the free try-on just ran out — let them admire the
         // result for a beat, then bring up the paywall to start the trial.

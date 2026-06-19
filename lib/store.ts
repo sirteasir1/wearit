@@ -305,10 +305,13 @@ export function creditsRemaining(uid: string): number {
 export function getTryOns(uid: string): number {
   return read<number>(TRYON_KEY(uid), 0);
 }
+/* Local-only optimistic bump for instant UI. The server (/api/tryon-demo) is the
+   source of truth for the remote `tryons` count — it decrements atomically — so
+   the client must NOT mirror this to Firestore, or it could overwrite the
+   authoritative balance. pullRemote reconciles via Math.max on the next load. */
 export function incTryOns(uid: string, by = 1): number {
   const n = getTryOns(uid) + Math.max(1, by);
   write(TRYON_KEY(uid), n);
-  void saveUserDoc(uid, { tryons: n });
   return n;
 }
 
