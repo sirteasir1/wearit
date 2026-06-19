@@ -10,10 +10,11 @@ import {
   pullRemote, creditsRemaining, getPlan, Plan, WardrobeItem, FREE_MONTHLY, PRO_MONTHLY,
 } from "@/lib/store";
 
-const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
-function checkoutHref(uid: string | null, email: string | null): string {
-  if (uid && PRO_PRODUCT) {
-    return `/api/checkout?products=${PRO_PRODUCT}&customerExternalId=${uid}&customerEmail=${encodeURIComponent(email || "")}`;
+const PRO_PRODUCT    = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
+const WEEKLY_PRODUCT = process.env.NEXT_PUBLIC_POLAR_WEEKLY_PRODUCT_ID;
+function checkoutHref(uid: string | null, email: string | null, product = PRO_PRODUCT): string {
+  if (uid && product) {
+    return `/api/checkout?products=${product}&customerExternalId=${uid}&customerEmail=${encodeURIComponent(email || "")}`;
   }
   return "/#pricing";
 }
@@ -677,7 +678,11 @@ export default function TryOnApp() {
       </div>
 
       {showPaywall && plan === "free" && (
-        <PaywallModal onClose={() => setShowPaywall(false)} checkoutHref={checkoutHref(uid, email)} />
+        <PaywallModal
+          onClose={() => setShowPaywall(false)}
+          checkoutHref={checkoutHref(uid, email)}
+          weeklyHref={WEEKLY_PRODUCT ? checkoutHref(uid, email, WEEKLY_PRODUCT) : null}
+        />
       )}
     </AppShell>
   );
@@ -685,7 +690,7 @@ export default function TryOnApp() {
 
 /* Reverse-trial paywall — pops once the free try-on is spent, with the Free vs Pro
    comparison and a single CTA into the 3-day free trial checkout. */
-function PaywallModal({ onClose, checkoutHref }: { onClose: () => void; checkoutHref: string }) {
+function PaywallModal({ onClose, checkoutHref, weeklyHref }: { onClose: () => void; checkoutHref: string; weeklyHref: string | null }) {
   const { t } = useI18n();
   const ROWS = t.profile.proRows(FREE_MONTHLY, PRO_MONTHLY);
   return (
@@ -723,6 +728,12 @@ function PaywallModal({ onClose, checkoutHref }: { onClose: () => void; checkout
           {t.app.paywallCta} <IconArrowRight size={16}/>
         </a>
         <p style={{ textAlign:"center",fontSize:12,color:"rgba(255,255,255,0.4)",marginTop:12 }}>{t.app.paywallFinePrint}</p>
+        {weeklyHref && (
+          <a href={weeklyHref}
+            style={{ display:"block",textAlign:"center",marginTop:16,paddingTop:16,borderTop:"1px solid rgba(255,255,255,0.1)",fontSize:13,color:"rgba(255,255,255,0.7)",textDecoration:"none" }}>
+            {t.common.weeklyOption}
+          </a>
+        )}
       </div>
     </div>
   );

@@ -10,7 +10,10 @@ import {
   FREE_MONTHLY, PRO_MONTHLY, Plan, UserProfile, UserSettings, defaultSettings,
 } from "@/lib/store";
 
-const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
+const PRO_PRODUCT    = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
+const WEEKLY_PRODUCT = process.env.NEXT_PUBLIC_POLAR_WEEKLY_PRODUCT_ID;
+const coHref = (product: string | undefined, uid: string, email: string | null) =>
+  product ? `/api/checkout?products=${product}&customerExternalId=${uid}&customerEmail=${encodeURIComponent(email || "")}` : "/#pricing";
 import { IconArrowRight, IconCheck, IconLink, IconShare } from "@/lib/icons";
 import { toast } from "@/lib/toast";
 import { useI18n } from "@/lib/i18n";
@@ -260,7 +263,8 @@ export default function Profile() {
         {showPro && (
           <ProModal
             onClose={()=>setShowPro(false)}
-            checkoutHref={user && PRO_PRODUCT ? `/api/checkout?products=${PRO_PRODUCT}&customerExternalId=${user.uid}&customerEmail=${encodeURIComponent(user.email || "")}` : "/#pricing"}
+            checkoutHref={user ? coHref(PRO_PRODUCT, user.uid, user.email) : "/#pricing"}
+            weeklyHref={user && WEEKLY_PRODUCT ? coHref(WEEKLY_PRODUCT, user.uid, user.email) : null}
           />
         )}
 
@@ -292,7 +296,7 @@ export default function Profile() {
 }
 
 /* Pro details — what you unlock, vs the free plan, with the checkout CTA. */
-function ProModal({ onClose, checkoutHref }: { onClose: () => void; checkoutHref: string }) {
+function ProModal({ onClose, checkoutHref, weeklyHref }: { onClose: () => void; checkoutHref: string; weeklyHref: string | null }) {
   const { t } = useI18n();
   // [label, free value, pro value, highlighted = a real upgrade]
   const ROWS = t.profile.proRows(FREE_MONTHLY, PRO_MONTHLY);
@@ -331,6 +335,12 @@ function ProModal({ onClose, checkoutHref }: { onClose: () => void; checkoutHref
           style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"#fff",color:"var(--ink)",borderRadius:8,padding:"15px",fontSize:15,fontWeight:600,textDecoration:"none" }}>
           {t.profile.upgradeToPro} <IconArrowRight size={16}/>
         </a>
+        {weeklyHref && (
+          <a href={weeklyHref}
+            style={{ display:"block",textAlign:"center",marginTop:16,paddingTop:16,borderTop:"1px solid rgba(255,255,255,0.1)",fontSize:13,color:"rgba(255,255,255,0.7)",textDecoration:"none" }}>
+            {t.common.weeklyOption}
+          </a>
+        )}
       </div>
     </div>
   );
