@@ -1973,6 +1973,14 @@ button, input, textarea, select, optgroup { font-family: inherit; }
 .sidebar-pro:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(176,138,62,0.42); filter: brightness(1.04); }
 .sidebar-pro:active { transform: translateY(0) scale(.98); }
 
+/* Fit-profile card: drop the photo on phones so the 3 stat columns get the full
+   width (a 128px photo + 3 padded columns overflowed and clipped long values). */
+@media (max-width: 560px) {
+  .fit-row .fit-photo { display: none; }
+  .fit-cell { padding: 16px 12px !important; }
+  .fit-cell .serif { font-size: 17px !important; overflow-wrap: anywhere; }
+}
+
 /* ── SMALL MOBILE (max 480px) ── */
 @media (max-width: 480px) {
   .hero-stats    { flex-direction: row; gap: 28px; }

@@ -187,13 +187,13 @@ export default function Profile() {
               {t.profile.edit2} <IconArrowRight size={14}/>
             </Link>
           </div>
-          <div style={{ display:"flex",borderTop:"1px solid var(--border)" }}>
+          <div className="fit-row" style={{ display:"flex",borderTop:"1px solid var(--border)" }}>
             {profile?.photo && (
-              <img src={profile.photo} alt="You" style={{ width:128,aspectRatio:"3/4",objectFit:"cover",borderRight:"1px solid var(--border)",flexShrink:0 }}/>
+              <img className="fit-photo" src={profile.photo} alt="You" style={{ width:128,aspectRatio:"3/4",objectFit:"cover",borderRight:"1px solid var(--border)",flexShrink:0 }}/>
             )}
-            <div style={{ flex:1,display:"grid",gridTemplateColumns:"repeat(3,1fr)" }}>
+            <div className="fit-stats" style={{ flex:1,display:"grid",gridTemplateColumns:"repeat(3,1fr)" }}>
               {physical.map((p,i) => (
-                <div key={p.label} style={{ padding:"22px 22px",borderLeft:i>0?"1px solid var(--border)":undefined,display:"flex",flexDirection:"column",justifyContent:"center" }}>
+                <div key={p.label} className="fit-cell" style={{ padding:"22px 22px",borderLeft:i>0?"1px solid var(--border)":undefined,display:"flex",flexDirection:"column",justifyContent:"center" }}>
                   <div style={{ fontSize:11,letterSpacing:"0.08em",textTransform:"uppercase",color:"var(--faint)",marginBottom:8,fontWeight:600 }}>{p.label}</div>
                   <div className="serif" style={{ fontSize:24,fontWeight:600,color:"var(--ink)",letterSpacing:"-0.02em" }}>{p.val}</div>
                 </div>
