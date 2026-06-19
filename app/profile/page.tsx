@@ -6,7 +6,8 @@ import { auth } from "@/lib/firebase";
 import AppShell from "@/lib/app-shell";
 import {
   getProfile, getWardrobe, getTryOns, getSettings, saveSettings,
-  getPlan, creditsRemaining, creditTotal, FREE_MONTHLY, PRO_MONTHLY, Plan, UserProfile, UserSettings, defaultSettings,
+  getPlan, creditsRemaining, creditTotal, getReferralCount, REFERRAL_MILESTONE,
+  FREE_MONTHLY, PRO_MONTHLY, Plan, UserProfile, UserSettings, defaultSettings,
 } from "@/lib/store";
 
 const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
@@ -220,6 +221,8 @@ export default function Profile() {
         {/* Invite friends — referral loop (give 3, get 3) */}
         {user && (() => {
           const link = `${typeof window !== "undefined" ? window.location.origin : ""}/signup?ref=${user.uid}`;
+          const invited = getReferralCount(user.uid);
+          const toGo = REFERRAL_MILESTONE - (invited % REFERRAL_MILESTONE);
           const copy = async () => {
             try { await navigator.clipboard.writeText(link); toast(t.profile.inviteCopied, "success"); }
             catch { toast(t.profile.inviteCopyFailed, "error"); }
@@ -235,7 +238,12 @@ export default function Profile() {
                 <span style={{ color:"var(--gold)" }}><IconShare size={18}/></span>
                 <h3 style={{ fontSize:17,fontWeight:600,color:"var(--ink)" }}>{t.profile.inviteTitle}</h3>
               </div>
-              <p style={{ fontSize:14,color:"var(--muted)",fontWeight:300,lineHeight:1.6,marginBottom:16 }}>{t.profile.inviteBody}</p>
+              <p style={{ fontSize:14,color:"var(--muted)",fontWeight:300,lineHeight:1.6,marginBottom:invited>0?10:16 }}>{t.profile.inviteBody}</p>
+              {invited > 0 && (
+                <div style={{ display:"inline-flex",alignItems:"center",gap:7,fontSize:12.5,fontWeight:500,color:"var(--gold)",background:"rgba(176,138,62,0.1)",border:"1px solid rgba(176,138,62,0.25)",padding:"5px 12px",borderRadius:100,marginBottom:16 }}>
+                  {t.profile.inviteProgress(invited, toGo)}
+                </div>
+              )}
               <div className="linkbar" style={{ marginBottom:0 }}>
                 <input value={link} readOnly onFocus={(e)=>e.currentTarget.select()} style={{ fontSize:13 }} />
                 <button className="btn-dark" onClick={copy} style={{ padding:"0 16px",borderRadius:8,display:"flex",alignItems:"center",gap:7,fontSize:14 }}>

@@ -79,10 +79,10 @@ Format per script: **Hook (on-screen + spoken) → Beats → CTA.**
 
 ### 10. Referral flex (drives the loop)
 - **Hook:** "free way to try on clothes (no card)"
-- **Beats:** show the 1 free try-on → "comment 'link' and I'll send my invite —
-  you get 3 free credits."
+- **Beats:** show the 1 free try-on → "comment 'link' and I'll drop my invite."
 - **CTA:** reply with your `/signup?ref=<uid>` link.
-- *Why:* turns viewers into referred sign-ups → both get credits → compounding.
+- *Why:* every 5 friends who join earns you 3 credits — so getting people to use
+  your link is in your own interest. Referred users invite their friends too.
 
 ## Extra hook bank (swap into any script)
 

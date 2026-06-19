@@ -135,6 +135,9 @@ export async function pullRemote(uid: string): Promise<void> {
   if (typeof r.bonusCredits === "number") {
     write(BONUS_KEY(uid), Math.max(getBonusCredits(uid), r.bonusCredits));
   }
+  if (typeof r.referralCount === "number") {
+    write(REFCOUNT_KEY(uid), Math.max(getReferralCount(uid), r.referralCount));
+  }
   if (r.plan === "pro" || r.plan === "free" || r.plan === "trial") {
     write(PLAN_KEY(uid), r.plan);
   }
@@ -226,7 +229,14 @@ export function isPro(uid: string): boolean {
    A referral link is /signup?ref=<referrerUid>. The code is stashed here at
    signup and claimed once the new user is authenticated; the server grants
    credits to BOTH sides and marks the referee so it can never be claimed twice. */
-const REF_KEY = "wearit:ref";
+export const REFERRAL_REWARD    = 3; // credits the referrer earns per milestone — keep in sync with the claim route
+export const REFERRAL_MILESTONE = 5; // ...every Nth friend who joins
+
+const REF_KEY      = "wearit:ref";
+const REFCOUNT_KEY = (uid: string) => `wearit:refcount:${uid}`;
+export function getReferralCount(uid: string): number {
+  return read<number>(REFCOUNT_KEY(uid), 0);
+}
 export function setPendingReferral(code: string) {
   if (typeof window === "undefined" || !code) return;
   try { localStorage.setItem(REF_KEY, code); } catch { /* ignore */ }
@@ -238,9 +248,11 @@ export function getPendingReferral(): string | null {
 function clearPendingReferral() {
   try { localStorage.removeItem(REF_KEY); } catch { /* ignore */ }
 }
-/* Claim any pending referral for this user. Safe to call on every load: it
-   no-ops without a pending code, clears the code on any definitive answer
-   (credited / invalid / already-claimed), and only retries on network errors. */
+/* Claim any pending referral for this user. The referee earns nothing (only the
+   referrer is rewarded, server-side) — this just records the join. Safe to call
+   on every load: it no-ops without a pending code, clears the code on any
+   definitive answer (joined / invalid / already), and only retries on network
+   errors. Returns true when the join was newly recorded. */
 export async function claimPendingReferral(uid: string): Promise<boolean> {
   const code = getPendingReferral();
   if (!code || code === uid) { clearPendingReferral(); return false; }
@@ -254,12 +266,8 @@ export async function claimPendingReferral(uid: string): Promise<boolean> {
     });
     if (r.status >= 500) return false; // server hiccup — keep the code for a retry
     clearPendingReferral();
-    const d = await r.json().catch(() => ({} as { credited?: boolean; bonusCredits?: number }));
-    if (d.credited && typeof d.bonusCredits === "number") {
-      write(BONUS_KEY(uid), Math.max(getBonusCredits(uid), d.bonusCredits));
-      return true;
-    }
-    return false;
+    const d = await r.json().catch(() => ({} as { joined?: boolean }));
+    return !!d.joined;
   } catch {
     return false; // network error — keep the code
   }

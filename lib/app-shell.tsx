@@ -71,9 +71,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
         didInitialSync = true;
       }
       if (cancelled) return;
-      // Claim a pending referral (fire-and-forget): grants credits to both sides once.
-      claimPendingReferral(user.uid).then((credited) => {
-        if (credited && !cancelled) toast(t.common.referralCredited, "success");
+      // Record a pending referral (fire-and-forget) — nudge the new user to invite too.
+      claimPendingReferral(user.uid).then((joined) => {
+        if (joined && !cancelled) toast(t.common.referralJoined, "success");
       });
       const p = getProfile(user.uid);
       setPhoto(p.photo);
