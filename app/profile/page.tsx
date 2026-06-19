@@ -113,7 +113,7 @@ export default function Profile() {
               </div>
             )}
             <div style={{ display:"flex",alignItems:"center",gap:10,marginTop:12,flexWrap:"wrap" }}>
-              <span style={{ fontSize:12,fontWeight:600,letterSpacing:"0.04em",color:"var(--gold)",background:"rgba(176,138,62,0.1)",border:"1px solid rgba(176,138,62,0.3)",padding:"4px 11px",borderRadius:100 }}>{plan === "pro" ? t.profile.proPlanBadge : plan === "trial" ? t.profile.trialPlanBadge : t.profile.freePlanBadge}</span>
+              <span style={{ fontSize:12,fontWeight:600,letterSpacing:"0.04em",color:"var(--gold)",background:"rgba(176,138,62,0.1)",border:"1px solid rgba(176,138,62,0.3)",padding:"4px 11px",borderRadius:100 }}>{plan === "pro" ? t.profile.proPlanBadge : plan === "weekly" ? t.profile.weeklyPlanBadge : plan === "trial" ? t.profile.trialPlanBadge : t.profile.freePlanBadge}</span>
               <span style={{ fontSize:13,color:"var(--muted)" }}>{t.profile.memberSince(memberSince)}</span>
             </div>
           </div>
@@ -202,7 +202,7 @@ export default function Profile() {
         <div style={{ background:"var(--ink)",borderRadius:16,padding:"30px",marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between",gap:20,flexWrap:"wrap" }}>
           <div>
             <p style={{ fontSize:11,color:"rgba(255,255,255,0.35)",letterSpacing:"0.1em",marginBottom:8,fontWeight:500 }}>{t.profile.currentPlan}</p>
-            <p style={{ fontSize:22,fontWeight:500,color:"#fff",marginBottom:4 }}>{plan === "pro" ? t.profile.pro : plan === "trial" ? t.profile.trial : t.profile.free}</p>
+            <p style={{ fontSize:22,fontWeight:500,color:"#fff",marginBottom:4 }}>{plan === "pro" ? t.profile.pro : plan === "weekly" ? t.profile.weekly : plan === "trial" ? t.profile.trial : t.profile.free}</p>
             <p style={{ fontSize:14,color:"rgba(255,255,255,0.45)",fontWeight:300 }}>{t.profile.planSummary(stats.total, stats.left)}</p>
           </div>
           {plan === "pro" ? (

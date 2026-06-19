@@ -644,6 +644,26 @@ export default function Landing() {
               </Link>
             </div>
 
+            {/* Weekly — entry paid tier */}
+            <div className="card" style={{ padding: "48px 44px" }}>
+              <p style={{ fontSize: 11, color: "var(--faint)", marginBottom: 24, letterSpacing: "0.12em", fontWeight: 500 }}>{t.landing.pricing.weekly}</p>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 32 }}>
+                <span className="serif" style={{ fontSize: 56, letterSpacing: "-0.04em", color: "var(--ink)", fontWeight: 300, lineHeight: 1 }}>$8</span>
+                <span style={{ color: "var(--muted)", fontSize: 16, fontWeight: 300 }}>{t.landing.pricing.perWeek}</span>
+              </div>
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: 28, marginBottom: 32 }}>
+                {t.landing.pricing.weeklyFeatures.map(f => (
+                  <div key={f} style={{ display: "flex", gap: 12, marginBottom: 14, fontSize: 14, color: "var(--muted)", fontWeight: 300, alignItems: "flex-start" }}>
+                    <span style={{ color: "var(--ink)", marginTop: 1 }}>—</span>
+                    {f}
+                  </div>
+                ))}
+              </div>
+              <Link href="/signup" className="btn-dark" style={{ width: "100%", padding: "13px", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {t.landing.pricing.getWeekly}
+              </Link>
+            </div>
+
             {/* Pro — firing up */}
             <div className="pro-wrap">
               {/* fire layers (behind the opaque card) */}
@@ -678,7 +698,8 @@ export default function Landing() {
                     {t.landing.pricing.mostPopular}
                   </span>
                 </div>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 32 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 32 }}>
+                  <span style={{ textDecoration: "line-through", color: "rgba(255,255,255,0.38)", fontSize: 22, fontWeight: 300 }}>{t.landing.pricing.proOldPrice}</span>
                   <span className="serif" style={{ fontSize: 56, letterSpacing: "-0.04em", color: "#fff", fontWeight: 300, lineHeight: 1 }}>$13</span>
                   <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 16, fontWeight: 300 }}>{t.landing.pricing.perMo}</span>
                 </div>

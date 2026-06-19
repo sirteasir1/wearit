@@ -2,10 +2,15 @@ import { Webhooks } from "@polar-sh/nextjs";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase-admin";
 
-const PRO_CREDITS   = 40; // credits granted per PAID Pro cycle — keep in sync with PRO_MONTHLY in lib/store.ts
-const TRIAL_CREDITS = 3;  // credits handed out once when a free trial begins (no payment yet)
+const PRO_CREDITS    = 40; // credits granted per PAID Pro cycle — keep in sync with PRO_MONTHLY in lib/store.ts
+const WEEKLY_CREDITS = 20; // credits granted per PAID Weekly cycle
+const TRIAL_CREDITS  = 3;  // credits handed out once when a free trial begins (no payment yet)
 
-type PlanFlag = "pro" | "trial" | "free";
+// Which Polar product is the Weekly plan (set in the hosting env). Everything else
+// is treated as Pro, so an unset var safely keeps the old Pro-only behaviour.
+const WEEKLY_PRODUCT = process.env.POLAR_WEEKLY_PRODUCT_ID;
+
+type PlanFlag = "pro" | "weekly" | "trial" | "free";
 
 /* Find the Firebase uid we attached at checkout (customerExternalId / metadata). */
 function uidFrom(data: unknown): string | null {
@@ -13,11 +18,20 @@ function uidFrom(data: unknown): string | null {
   return d?.customer?.externalId || d?.metadata?.uid || d?.customerExternalId || null;
 }
 
-/* Map a subscription status to our plan flag. "trialing" is its own state so the
-   app can give the trial a limited feature set; only a paid "active" sub is Pro. */
-function planForStatus(status?: string): PlanFlag {
+/* The product id on an order / subscription payload. */
+function productIdOf(data: unknown): string | null {
+  const d = data as { productId?: string; product?: { id?: string } };
+  return d?.productId || d?.product?.id || null;
+}
+function isWeekly(data: unknown): boolean {
+  return !!WEEKLY_PRODUCT && productIdOf(data) === WEEKLY_PRODUCT;
+}
+
+/* Map a subscription status (+ product) to our plan flag. "trialing" is its own
+   state (Pro's 3-day trial); a paid "active" sub is Weekly or Pro by product. */
+function planForStatus(status: string | undefined, weekly: boolean): PlanFlag {
   if (status === "trialing") return "trial";
-  if (status === "active")   return "pro";
+  if (status === "active")   return weekly ? "weekly" : "pro";
   return "free";
 }
 
@@ -59,7 +73,7 @@ async function grantTrialCredits(data: unknown) {
 /* Keep the plan flag in sync with the subscription status, and seed trial credits
    the moment a trial starts. The paid 40-credit grant is handled by order.paid. */
 async function syncFromSubscription(data: unknown) {
-  const plan = planForStatus((data as { status?: string })?.status);
+  const plan = planForStatus((data as { status?: string })?.status, isWeekly(data));
   await setPlan(data, plan);
   if (plan === "trial") await grantTrialCredits(data);
 }
@@ -78,15 +92,18 @@ async function grantCreditsForOrder(data: unknown) {
     console.error("[polar webhook] order.paid missing uid or order id", { uid, orderId });
     return;
   }
+  const weekly  = isWeekly(data);
+  const credits = weekly ? WEEKLY_CREDITS : PRO_CREDITS;
+  const plan: PlanFlag = weekly ? "weekly" : "pro";
   const db = adminDb();
   try {
     await db.runTransaction(async (tx) => {
       const markerRef = db.collection("polar_processed_orders").doc(orderId);
       if ((await tx.get(markerRef)).exists) return; // already granted for this order
-      tx.set(markerRef, { uid, grantedAt: FieldValue.serverTimestamp(), credits: PRO_CREDITS });
+      tx.set(markerRef, { uid, grantedAt: FieldValue.serverTimestamp(), credits, plan });
       tx.set(
         db.collection("users").doc(uid),
-        { plan: "pro", bonusCredits: FieldValue.increment(PRO_CREDITS) },
+        { plan, bonusCredits: FieldValue.increment(credits) },
         { merge: true }
       );
     });
@@ -102,7 +119,7 @@ export const POST = Webhooks({
   // Plan flag + trial seeding — kept in sync with the subscription's status.
   onSubscriptionCreated:    async (p) => syncFromSubscription(p.data),
   onSubscriptionUpdated:    async (p) => syncFromSubscription(p.data),
-  onSubscriptionActive:     async (p) => setPlan(p.data, "pro"),
+  onSubscriptionActive:     async (p) => syncFromSubscription(p.data),
   onSubscriptionUncanceled: async (p) => syncFromSubscription(p.data),
   onSubscriptionRevoked:    async (p) => setPlan(p.data, "free"),
 });

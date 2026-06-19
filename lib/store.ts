@@ -138,7 +138,7 @@ export async function pullRemote(uid: string): Promise<void> {
   if (typeof r.referralCount === "number") {
     write(REFCOUNT_KEY(uid), Math.max(getReferralCount(uid), r.referralCount));
   }
-  if (r.plan === "pro" || r.plan === "free" || r.plan === "trial") {
+  if (r.plan === "pro" || r.plan === "free" || r.plan === "trial" || r.plan === "weekly") {
     write(PLAN_KEY(uid), r.plan);
   }
   if (r.style && typeof r.style === "object") {
@@ -214,7 +214,7 @@ export function saveStyleProfile(uid: string, s: StyleProfile) {
    credits, and each Pro payment adds PRO_MONTHLY bonus credits on top (granted
    server-side by the Polar webhook). Remaining = base + bonus − used.
    Both bonus and tryons only ever grow, so they merge safely via Math.max. */
-export type Plan = "free" | "trial" | "pro";
+export type Plan = "free" | "trial" | "weekly" | "pro";
 const PLAN_KEY  = (uid: string) => `wearit:plan:${uid}`;
 const BONUS_KEY = (uid: string) => `wearit:bonus:${uid}`;
 export function getPlan(uid: string): Plan {
