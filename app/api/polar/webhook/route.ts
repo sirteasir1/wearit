@@ -6,9 +6,10 @@ const PRO_CREDITS    = 40; // credits granted per PAID Pro cycle — keep in syn
 const WEEKLY_CREDITS = 20; // credits granted per PAID Weekly cycle
 const TRIAL_CREDITS  = 3;  // credits handed out once when a free trial begins (no payment yet)
 
-// Which Polar product is the Weekly plan (set in the hosting env). Everything else
-// is treated as Pro, so an unset var safely keeps the old Pro-only behaviour.
-const WEEKLY_PRODUCT = process.env.POLAR_WEEKLY_PRODUCT_ID;
+// Which Polar product is the Weekly plan. Reuses the public var the client
+// checkout uses, so only ONE env var is needed (a server-only override is also
+// honoured). Unset → everything is treated as Pro (old Pro-only behaviour).
+const WEEKLY_PRODUCT = process.env.POLAR_WEEKLY_PRODUCT_ID || process.env.NEXT_PUBLIC_POLAR_WEEKLY_PRODUCT_ID;
 
 type PlanFlag = "pro" | "weekly" | "trial" | "free";
 
