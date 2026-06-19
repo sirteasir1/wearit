@@ -24,6 +24,11 @@ function start() {
   });
 }
 
+// Initialise at module load (client only), BEFORE any React effect runs — child
+// effects fire before parent effects, so a useEffect-based init would miss the
+// first $pageview. Self-guards on window + key, and is idempotent.
+if (typeof window !== "undefined") start();
+
 /* Funnel helpers — call these from anywhere. */
 export function track(event: string, props?: Record<string, unknown>) {
   if (!on()) return;
