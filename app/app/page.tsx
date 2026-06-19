@@ -25,6 +25,7 @@ import {
   IconTikTok, IconWhatsApp, IconDownload, IconLinkChain, IconScrub,
 } from "@/lib/icons";
 import { toast } from "@/lib/toast";
+import { track } from "@/lib/posthog";
 import { useI18n } from "@/lib/i18n";
 
 type Category = "tops" | "bottoms" | "one-pieces";
@@ -144,6 +145,7 @@ export default function TryOnApp() {
     // if we just came back from a successful upgrade, re-sync the plan first
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("upgraded")) {
       await pullRemote(u.uid);
+      track("checkout_returned", { plan: getPlan(u.uid) });
       toast(t.app.welcomePro, "success");
     }
     const p = getProfile(u.uid);
@@ -152,6 +154,8 @@ export default function TryOnApp() {
     setCredits(creditsRemaining(u.uid));
     setPlan(getPlan(u.uid));
   }), []);
+
+  useEffect(() => { if (showPaywall) track("paywall_shown", { plan }); }, [showPaywall, plan]);
 
   useEffect(() => {
     if (!loading) { setProg(0); return; }
@@ -289,6 +293,7 @@ export default function TryOnApp() {
       const d = await r.json();
       // 402 = server says out of credits (the authoritative check) — surface the paywall.
       if (r.status === 402) {
+        track("try_on_blocked_no_credits", { plan });
         if (uid) { incTryOns(uid, cost); setCredits(0); }
         if (plan === "free") setShowPaywall(true); else setError(t.app.outOfCredits);
         return;
@@ -297,6 +302,7 @@ export default function TryOnApp() {
       setProg(100);
       await new Promise(res => setTimeout(res, 300));
       setResult(d);
+      track("try_on_completed", { garments: cost, verdict: d?.styleAdvice?.verdict, plan });
       if (uid) {
         // The server already decremented the balance; trust its number, and mirror
         // it into the local cache so the badge/gate stay in sync.
@@ -745,13 +751,13 @@ function PaywallModal({ onClose, checkoutHref, weeklyHref }: { onClose: () => vo
           ))}
         </div>
 
-        <a href={checkoutHref}
+        <a href={checkoutHref} onClick={() => track("checkout_started", { plan: "pro", source: "paywall" })}
           style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"#fff",color:"var(--ink)",borderRadius:8,padding:"15px",fontSize:15,fontWeight:600,textDecoration:"none" }}>
           {t.app.paywallCta} <IconArrowRight size={16}/>
         </a>
         <p style={{ textAlign:"center",fontSize:12,color:"rgba(255,255,255,0.4)",marginTop:12 }}>{t.app.paywallFinePrint}</p>
         {weeklyHref && (
-          <a href={weeklyHref}
+          <a href={weeklyHref} onClick={() => track("checkout_started", { plan: "weekly", source: "paywall" })}
             style={{ display:"block",textAlign:"center",marginTop:16,paddingTop:16,borderTop:"1px solid rgba(255,255,255,0.1)",fontSize:13,color:"rgba(255,255,255,0.7)",textDecoration:"none" }}>
             {t.common.weeklyOption}
           </a>

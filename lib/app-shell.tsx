@@ -6,6 +6,7 @@ import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { getProfile, pullRemote, getPlan, claimPendingReferral, Plan } from "@/lib/store";
 import { toast } from "@/lib/toast";
+import { identifyUser, resetAnalytics } from "@/lib/posthog";
 import { IconSpark, IconHanger, IconUser, IconSignOut, IconPanel, IconWand, IconBattle } from "@/lib/icons";
 import { useI18n, LangSwitch } from "@/lib/i18n";
 
@@ -35,7 +36,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [plan, setPlan]             = useState<Plan>("free");
   const [ready, setReady]           = useState(() => !!auth.currentUser && didInitialSync);
 
-  useEffect(() => onAuthStateChanged(auth, (u) => setUser(u)), []);
+  useEffect(() => onAuthStateChanged(auth, (u) => {
+    setUser(u);
+    if (u) identifyUser(u.uid, { email: u.email });
+  }), []);
 
   /* restore sidebar preference — default to collapsed on mobile so the
      248px rail never squeezes the page on a phone */
@@ -101,6 +105,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const handleSignOut = async () => {
     setSigningOut(true);
+    resetAnalytics();
     await signOut(auth);
     window.location.href = "/";
   };

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useI18n, LangSwitch } from "@/lib/i18n";
 import { setPendingCheckout } from "@/lib/store";
+import { track } from "@/lib/posthog";
 
 /* ── scroll reveal ── */
 function useReveal() {
@@ -660,7 +661,7 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
-              <Link href="/signup" onClick={() => setPendingCheckout("weekly")} className="btn-dark" style={{ width: "100%", padding: "13px", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Link href="/signup" onClick={() => { setPendingCheckout("weekly"); track("checkout_started", { plan: "weekly", source: "landing" }); }} className="btn-dark" style={{ width: "100%", padding: "13px", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {t.landing.pricing.getWeekly}
               </Link>
             </div>
@@ -714,7 +715,7 @@ export default function Landing() {
                     </div>
                   ))}
                 </div>
-                <Link href="/signup" className="btn-pro" onClick={(e) => { e.stopPropagation(); setPendingCheckout("pro"); }}>
+                <Link href="/signup" className="btn-pro" onClick={(e) => { e.stopPropagation(); setPendingCheckout("pro"); track("checkout_started", { plan: "pro", source: "landing" }); }}>
                   {t.landing.pricing.startTrial}
                 </Link>
                 <span className="pro-tap-hint">{t.landing.pricing.tapHint} <IconArrow /></span>

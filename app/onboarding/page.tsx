@@ -5,6 +5,7 @@ import Link from "next/link";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { getProfile, saveProfile, pullRemote, fileToResizedDataURL, UserProfile } from "@/lib/store";
+import { track } from "@/lib/posthog";
 import { IconCamera, IconArrowRight, IconCheck } from "@/lib/icons";
 import { useI18n, LangSwitch } from "@/lib/i18n";
 
@@ -78,6 +79,7 @@ export default function Onboarding() {
       heightCm: height ? Math.round(Number(height)) : null,
       weightKg: weight ? Math.round(Number(weight)) : null,
     });
+    if (!wasOnboarded) track("onboarding_completed", { gender, hasMeasurements: !!(height && weight) });
     router.replace(wasOnboarded ? "/profile" : "/app");
   };
 

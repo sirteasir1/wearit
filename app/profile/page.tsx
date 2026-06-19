@@ -16,6 +16,7 @@ const coHref = (product: string | undefined, uid: string, email: string | null) 
   product ? `/api/checkout?products=${product}&customerExternalId=${uid}&customerEmail=${encodeURIComponent(email || "")}` : "/#pricing";
 import { IconArrowRight, IconCheck, IconLink, IconShare } from "@/lib/icons";
 import { toast } from "@/lib/toast";
+import { track } from "@/lib/posthog";
 import { useI18n } from "@/lib/i18n";
 
 export default function Profile() {
@@ -331,12 +332,12 @@ function ProModal({ onClose, checkoutHref, weeklyHref }: { onClose: () => void; 
           ))}
         </div>
 
-        <a href={checkoutHref}
+        <a href={checkoutHref} onClick={() => track("checkout_started", { plan: "pro", source: "profile" })}
           style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"#fff",color:"var(--ink)",borderRadius:8,padding:"15px",fontSize:15,fontWeight:600,textDecoration:"none" }}>
           {t.profile.upgradeToPro} <IconArrowRight size={16}/>
         </a>
         {weeklyHref && (
-          <a href={weeklyHref}
+          <a href={weeklyHref} onClick={() => track("checkout_started", { plan: "weekly", source: "profile" })}
             style={{ display:"block",textAlign:"center",marginTop:16,paddingTop:16,borderTop:"1px solid rgba(255,255,255,0.1)",fontSize:13,color:"rgba(255,255,255,0.7)",textDecoration:"none" }}>
             {t.common.weeklyOption}
           </a>

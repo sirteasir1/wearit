@@ -12,6 +12,7 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { setPendingReferral } from "@/lib/store";
+import { track } from "@/lib/posthog";
 import { useI18n, LangSwitch, type Dict } from "@/lib/i18n";
 
 function authMessage(err: AuthError, t: Dict): string {
@@ -57,6 +58,7 @@ export default function SignUp() {
     setError("");
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
+      track("signup", { method: "google" });
       afterAuth();
     } catch (e) {
       console.error("[google sign-up]", (e as AuthError)?.code, e);
@@ -76,6 +78,7 @@ export default function SignUp() {
       if (form.name.trim()) {
         await updateProfile(cred.user, { displayName: form.name.trim() });
       }
+      track("signup", { method: "email" });
       // Email accounts must confirm their address before entering the app.
       try { await sendEmailVerification(cred.user); } catch { /* user can resend on the next screen */ }
       window.location.href = "/verify-email";
