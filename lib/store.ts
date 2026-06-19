@@ -241,6 +241,22 @@ export function setPendingReferral(code: string) {
   if (typeof window === "undefined" || !code) return;
   try { localStorage.setItem(REF_KEY, code); } catch { /* ignore */ }
 }
+
+/* Pending checkout intent — set when a logged-out visitor taps a paid plan on
+   the landing, then consumed once they reach the app (which has their uid) to
+   forward them straight to the right Polar checkout instead of a dead-end. */
+const BUY_KEY = "wearit:buy";
+export function setPendingCheckout(plan: "weekly" | "pro") {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(BUY_KEY, plan); } catch { /* ignore */ }
+}
+export function getPendingCheckout(): "weekly" | "pro" | null {
+  if (typeof window === "undefined") return null;
+  try { const v = localStorage.getItem(BUY_KEY); return v === "weekly" || v === "pro" ? v : null; } catch { return null; }
+}
+export function clearPendingCheckout() {
+  try { localStorage.removeItem(BUY_KEY); } catch { /* ignore */ }
+}
 export function getPendingReferral(): string | null {
   if (typeof window === "undefined") return null;
   try { return localStorage.getItem(REF_KEY); } catch { return null; }

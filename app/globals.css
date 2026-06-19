@@ -916,7 +916,14 @@ button, input, textarea, select, optgroup { font-family: inherit; }
 }
 .stat-item:first-child { border-left: none; }
 
-.pricing-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; align-items: start; }
+.pricing-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; align-items: stretch; }
+/* Equal-height cards with their CTA pinned to the bottom */
+.pricing-grid > .card { display: flex; flex-direction: column; }
+.pricing-grid > .card > a:last-child { margin-top: auto; }
+.pricing-grid > .pro-wrap { display: flex; }
+.pricing-grid > .pro-wrap > .pro-card { flex: 1; display: flex; flex-direction: column; }
+.pro-card > .pro-content { flex: 1; display: flex; flex-direction: column; }
+.pro-content > .btn-pro { margin-top: auto; }
 
 /* ── PRO PLAN — "firing up" (one big living flame behind the card) ── */
 .pro-wrap { position: relative; }

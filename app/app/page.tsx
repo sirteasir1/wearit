@@ -7,7 +7,8 @@ import AppShell from "@/lib/app-shell";
 import ShopStrip from "@/lib/shop-strip";
 import {
   getProfile, incTryOns, addWardrobeItem, dataURLToFile, dataURLToThumb,
-  pullRemote, creditsRemaining, getPlan, Plan, WardrobeItem, FREE_MONTHLY, PRO_MONTHLY,
+  pullRemote, creditsRemaining, getPlan, getPendingCheckout, clearPendingCheckout,
+  Plan, WardrobeItem, FREE_MONTHLY, PRO_MONTHLY,
 } from "@/lib/store";
 
 const PRO_PRODUCT    = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
@@ -132,6 +133,14 @@ export default function TryOnApp() {
     if (!u) return;
     setUid(u.uid);
     setEmail(u.email);
+    // A paid plan tapped on the landing — forward straight to its Polar checkout
+    // now that we have the user's uid (avoids a dead-end on the dashboard).
+    const buy = getPendingCheckout();
+    if (buy) {
+      const product = buy === "weekly" ? WEEKLY_PRODUCT : PRO_PRODUCT;
+      clearPendingCheckout();
+      if (product) { window.location.href = checkoutHref(u.uid, u.email, product); return; }
+    }
     // if we just came back from a successful upgrade, re-sync the plan first
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("upgraded")) {
       await pullRemote(u.uid);

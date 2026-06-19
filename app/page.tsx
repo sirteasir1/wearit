@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useI18n, LangSwitch } from "@/lib/i18n";
+import { setPendingCheckout } from "@/lib/store";
 
 /* ── scroll reveal ── */
 function useReveal() {
@@ -659,7 +660,7 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
-              <Link href="/signup" className="btn-dark" style={{ width: "100%", padding: "13px", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Link href="/signup" onClick={() => setPendingCheckout("weekly")} className="btn-dark" style={{ width: "100%", padding: "13px", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {t.landing.pricing.getWeekly}
               </Link>
             </div>
@@ -698,10 +699,12 @@ export default function Landing() {
                     {t.landing.pricing.mostPopular}
                   </span>
                 </div>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 32 }}>
-                  <span style={{ textDecoration: "line-through", color: "rgba(255,255,255,0.38)", fontSize: 22, fontWeight: 300 }}>{t.landing.pricing.proOldPrice}</span>
-                  <span className="serif" style={{ fontSize: 56, letterSpacing: "-0.04em", color: "#fff", fontWeight: 300, lineHeight: 1 }}>$13</span>
-                  <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 16, fontWeight: 300 }}>{t.landing.pricing.perMo}</span>
+                <div style={{ marginBottom: 32 }}>
+                  <div style={{ textDecoration: "line-through", color: "rgba(255,255,255,0.38)", fontSize: 16, fontWeight: 300, marginBottom: 4 }}>{t.landing.pricing.proOldPrice}</div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 4, whiteSpace: "nowrap" }}>
+                    <span className="serif" style={{ fontSize: 56, letterSpacing: "-0.04em", color: "#fff", fontWeight: 300, lineHeight: 1 }}>$13</span>
+                    <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 16, fontWeight: 300 }}>{t.landing.pricing.perMo}</span>
+                  </div>
                 </div>
                 <div style={{ borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 28, marginBottom: 32 }}>
                   {t.landing.pricing.proFeatures.map(f => (
@@ -711,7 +714,7 @@ export default function Landing() {
                     </div>
                   ))}
                 </div>
-                <Link href="/signup" className="btn-pro" onClick={(e) => e.stopPropagation()}>
+                <Link href="/signup" className="btn-pro" onClick={(e) => { e.stopPropagation(); setPendingCheckout("pro"); }}>
                   {t.landing.pricing.startTrial}
                 </Link>
                 <span className="pro-tap-hint">{t.landing.pricing.tapHint} <IconArrow /></span>
