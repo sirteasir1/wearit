@@ -6,7 +6,7 @@ import { setPendingCheckout } from "@/lib/store";
 import { track } from "@/lib/posthog";
 
 /* ── scroll reveal ── */
-function useReveal() {
+function useReveal(lang: string) {
   useEffect(() => {
     const els = Array.from(document.querySelectorAll<HTMLElement>(".reveal"));
     const reveal = (el: HTMLElement) => el.classList.add("in");
@@ -45,7 +45,10 @@ function useReveal() {
       window.removeEventListener("scroll", sweep);
       window.removeEventListener("resize", sweep);
     };
-  }, []);
+    // Re-run on language change: switching locale re-renders the page, which wipes
+    // the imperatively-added ".in" class and remounts elements — so we re-observe
+    // and re-sweep to restore visibility (otherwise sections blank out).
+  }, [lang]);
 }
 
 /* ── animated number counter ── */
@@ -377,13 +380,13 @@ function FAQ() {
 }
 
 export default function Landing() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mouseX,   setMouseX]   = useState(0);
   const [showPro,  setShowPro]  = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  useReveal();
+  useReveal(lang);
 
   /* Force muted autoplay (works around the browser autoplay block) */
   useEffect(() => {
