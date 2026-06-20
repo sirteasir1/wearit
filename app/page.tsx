@@ -8,12 +8,14 @@ import { track } from "@/lib/posthog";
 /* ── scroll reveal ── */
 function useReveal() {
   useEffect(() => {
-    const els = document.querySelectorAll<HTMLElement>(".reveal");
+    const els = Array.from(document.querySelectorAll<HTMLElement>(".reveal"));
+    const reveal = (el: HTMLElement) => el.classList.add("in");
+
     const obs = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            (entry.target as HTMLElement).classList.add("in");
+            reveal(entry.target as HTMLElement);
             obs.unobserve(entry.target);
           }
         });
@@ -21,7 +23,28 @@ function useReveal() {
       { threshold: 0.08, rootMargin: "0px 0px -40px 0px" }
     );
     els.forEach((el) => obs.observe(el));
-    return () => obs.disconnect();
+
+    // Safety net: a fast scroll or an anchor jump (e.g. clicking "Pricing") can
+    // skip past a section before the observer fires, leaving it stuck invisible
+    // and reading as blank empty space. On every scroll, reveal anything whose
+    // top has already passed into/above the viewport.
+    const sweep = () => {
+      const vh = window.innerHeight;
+      for (const el of els) {
+        if (!el.classList.contains("in") && el.getBoundingClientRect().top < vh * 0.92) {
+          reveal(el);
+          obs.unobserve(el);
+        }
+      }
+    };
+    sweep();
+    window.addEventListener("scroll", sweep, { passive: true });
+    window.addEventListener("resize", sweep, { passive: true });
+    return () => {
+      obs.disconnect();
+      window.removeEventListener("scroll", sweep);
+      window.removeEventListener("resize", sweep);
+    };
   }, []);
 }
 
@@ -30,22 +53,29 @@ function AnimNum({ to, suffix = "" }: { to: number; suffix?: string }) {
   const [val, setVal] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
-    const obs = new IntersectionObserver(
-      ([e]) => {
-        if (!e.isIntersecting) return;
-        obs.disconnect();
-        let start = 0;
-        const step = () => {
-          start += to / 44;
-          setVal(Math.min(Math.round(start), to));
-          if (start < to) requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-      },
-      { threshold: 0.5 }
-    );
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
+    const el = ref.current;
+    if (!el) return;
+    let done = false;
+    const run = () => {
+      if (done) return;
+      done = true;
+      obs.disconnect();
+      window.removeEventListener("scroll", onScroll);
+      let start = 0;
+      const step = () => {
+        start += to / 44;
+        setVal(Math.min(Math.round(start), to));
+        if (start < to) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) run(); }, { threshold: 0.5 });
+    obs.observe(el);
+    // Fallback so a fast scroll-past doesn't leave the number stuck at 0.
+    const onScroll = () => { if (el.getBoundingClientRect().top < window.innerHeight * 0.9) run(); };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { obs.disconnect(); window.removeEventListener("scroll", onScroll); };
   }, [to]);
   return <span ref={ref}>{val}{suffix}</span>;
 }
