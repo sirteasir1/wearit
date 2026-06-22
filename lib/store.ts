@@ -16,7 +16,8 @@ export interface UserProfile {
   gender: "female" | "male" | "other" | "";
   heightCm: number | null;
   weightKg: number | null;
-  photo: string | null; // resized dataURL
+  photo: string | null; // resized dataURL, OR a /images/models/* template path
+  photoIsTemplate: boolean; // true while `photo` is a stand-in model, not the user's own
 }
 
 export interface WardrobeItem {
@@ -39,6 +40,7 @@ export const emptyProfile: UserProfile = {
   heightCm: null,
   weightKg: null,
   photo: null,
+  photoIsTemplate: false,
 };
 
 const PROFILE_KEY  = (uid: string) => `wearit:profile:${uid}`;
@@ -104,8 +106,9 @@ function remoteProfilePayload(p: UserProfile): Record<string, unknown> {
     gender: p.gender || "",
     heightCm: p.heightCm ?? null,
     weightKg: p.weightKg ?? null,
+    photoIsTemplate: !!p.photoIsTemplate,
   };
-  // keep the Firestore doc safely under the 1MB limit
+  // keep the Firestore doc safely under the 1MB limit (template paths are tiny)
   if (p.photo && p.photo.length < 700_000) out.photo = p.photo;
   return out;
 }
@@ -126,6 +129,7 @@ export async function pullRemote(uid: string): Promise<void> {
     heightCm: (r.heightCm as number | null) ?? localP.heightCm,
     weightKg: (r.weightKg as number | null) ?? localP.weightKg,
     photo: (r.photo as string | null) ?? localP.photo,
+    photoIsTemplate: typeof r.photoIsTemplate === "boolean" ? r.photoIsTemplate : localP.photoIsTemplate,
   };
   write(PROFILE_KEY(uid), merged);
 

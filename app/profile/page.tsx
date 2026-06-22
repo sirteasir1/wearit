@@ -64,7 +64,7 @@ export default function Profile() {
   };
 
   const checklist = [
-    { label: t.profile.checkPhoto,  done: !!profile?.photo },
+    { label: t.profile.checkPhoto,  done: !!profile?.photo && !profile?.photoIsTemplate },
     { label: t.profile.checkHeight, done: !!profile?.heightCm },
     { label: t.profile.checkWeight, done: !!profile?.weightKg },
     { label: t.profile.checkPreset, done: !!profile?.gender },

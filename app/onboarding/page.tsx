@@ -4,10 +4,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { getProfile, saveProfile, pullRemote, fileToResizedDataURL, UserProfile } from "@/lib/store";
+import { getProfile, saveProfile, pullRemote, fileToResizedDataURL, dataURLToThumb, UserProfile } from "@/lib/store";
+import { pickTemplateModel } from "@/lib/template-models";
 import { track } from "@/lib/posthog";
-import { IconCamera, IconArrowRight, IconCheck } from "@/lib/icons";
+import { toast } from "@/lib/toast";
+import { IconCamera, IconArrowRight, IconCheck, IconUpload, IconWand } from "@/lib/icons";
 import { useI18n, LangSwitch } from "@/lib/i18n";
+import CameraCapture from "@/components/CameraCapture";
 
 export default function Onboarding() {
   const { t } = useI18n();
@@ -18,16 +21,17 @@ export default function Onboarding() {
   ];
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
   const [user, setUser]   = useState<User | null | "loading">("loading");
   const [wasOnboarded, setWasOnboarded] = useState(false);
 
-  const [photo, setPhoto]   = useState<string | null>(null);
+  const [photo, setPhoto]   = useState<string | null>(null); // the user's OWN photo (or generated body)
   const [gender, setGender] = useState<UserProfile["gender"]>("");
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const [busy, setBusy]     = useState(false);
   const [err, setErr]       = useState("");
+  const [cam, setCam]       = useState<null | "direct" | "avatar">(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   useEffect(() => onAuthStateChanged(auth, (u) => setUser(u)), []);
 
@@ -41,7 +45,9 @@ export default function Onboarding() {
         if (cancelled) return;
         const p = getProfile(user.uid);
         setWasOnboarded(p.onboarded);
-        if (p.photo)    setPhoto(p.photo);
+        // Only restore a previously saved OWN photo — a template stand-in is
+        // recomputed live from the measurements below.
+        if (p.photo && !p.photoIsTemplate) setPhoto(p.photo);
         if (p.gender)   setGender(p.gender);
         if (p.heightCm) setHeight(String(p.heightCm));
         if (p.weightKg) setWeight(String(p.weightKg));
@@ -58,32 +64,65 @@ export default function Onboarding() {
     );
   }
 
-  const onPhoto = async (f: File) => {
+  const heightNum = height ? Number(height) : null;
+  const weightNum = weight ? Number(weight) : null;
+  const templateSrc = pickTemplateModel(gender, heightNum, weightNum);
+  const modelSrc = photo ?? templateSrc;   // what we render in the preview
+  const isTemplate = !photo;               // true while showing the stand-in
+
+  const onUpload = async (f: File) => {
     if (!f.type.startsWith("image/")) return;
     setErr("");
     try {
-      // keep it small enough to always sync via Firestore (cross-device), still good for try-on
       setPhoto(await fileToResizedDataURL(f, 880, 0.72));
     } catch {
       setErr(t.onboarding.errReadImage);
     }
   };
 
-  const finish = async () => {
-    if (!photo) { setErr(t.onboarding.errAddPhoto); return; }
-    setBusy(true);
-    saveProfile(user.uid, {
-      onboarded: true,
-      photo,
-      gender,
-      heightCm: height ? Math.round(Number(height)) : null,
-      weightKg: weight ? Math.round(Number(weight)) : null,
-    });
-    if (!wasOnboarded) track("onboarding_completed", { gender, hasMeasurements: !!(height && weight) });
-    router.replace(wasOnboarded ? "/profile" : "/app");
+  const onCameraShot = async (dataUrl: string) => {
+    const mode = cam;
+    setCam(null);
+    if (mode === "avatar") { await runAvatar(dataUrl); return; }
+    setErr("");
+    setPhoto(dataUrl); // already a downsized JPEG from the capture
   };
 
-  const stepDone = !!photo;
+  const runAvatar = async (selfie: string) => {
+    setErr("");
+    setAvatarBusy(true);
+    try {
+      const token = await (user as User).getIdToken();
+      const res = await fetch("/api/avatar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ selfie, heightCm: heightNum, weightKg: weightNum, gender }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.image) throw new Error(d.error || "failed");
+      setPhoto(await dataURLToThumb(d.image, 880, 0.82));
+      toast(t.onboarding.yourPhoto, "success");
+    } catch {
+      setErr(t.onboarding.avatarFailed);
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const finish = async () => {
+    setBusy(true);
+    const usingOwn = !!photo;
+    saveProfile(user.uid, {
+      onboarded: true,
+      photo: usingOwn ? photo : templateSrc,
+      photoIsTemplate: !usingOwn,
+      gender,
+      heightCm: heightNum ? Math.round(heightNum) : null,
+      weightKg: weightNum ? Math.round(weightNum) : null,
+    });
+    if (!wasOnboarded) track("onboarding_completed", { gender, hasMeasurements: !!(height && weight), usedTemplate: !usingOwn });
+    router.replace(wasOnboarded ? "/profile" : "/app");
+  };
 
   return (
     <div style={{ minHeight:"100vh",background:"var(--bg)",display:"flex",flexDirection:"column" }}>
@@ -164,51 +203,76 @@ export default function Onboarding() {
             <p style={{ textAlign:"center",fontSize:12,color:"var(--faint)",marginTop:14 }}>{t.onboarding.privateNote}</p>
           </div>
 
-          {/* RIGHT — photo upload */}
+          {/* RIGHT — model preview (template stand-in until they add their own) */}
           <div className="anim-up-1">
             <input ref={fileRef} type="file" accept="image/*" style={{ display:"none" }}
-              onChange={e=>{ const f=e.target.files?.[0]; if(f) onPhoto(f); e.target.value=""; }} />
-            <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display:"none" }}
-              onChange={e=>{ const f=e.target.files?.[0]; if(f) onPhoto(f); e.target.value=""; }} />
-            <div
-              onClick={()=>fileRef.current?.click()}
-              className="upload-zone"
-              style={{ aspectRatio:"3/4",display:"flex",alignItems:"center",justifyContent:"center",position:"relative" }}
-            >
-              {photo ? (
-                <>
-                  <img src={photo} alt="You" style={{ position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover" }} />
-                  <div style={{ position:"absolute",top:12,left:12,display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,0.92)",backdropFilter:"blur(8px)",padding:"5px 11px",borderRadius:100,fontSize:12,color:"#1a7a2e",fontWeight:500 }}>
-                    <IconCheck size={13}/> {t.onboarding.photoAdded}
-                  </div>
-                  <button onClick={(e)=>{e.stopPropagation();fileRef.current?.click();}}
-                    style={{ position:"absolute",bottom:12,right:12,background:"rgba(255,255,255,0.92)",border:"1px solid var(--border)",borderRadius:6,fontSize:12,padding:"7px 14px",cursor:"pointer",backdropFilter:"blur(8px)",color:"var(--ink)" }}>
-                    {t.onboarding.change}
-                  </button>
-                </>
-              ) : (
-                <div style={{ textAlign:"center",padding:32,pointerEvents:"none",color:"var(--muted)" }}>
-                  <div style={{ display:"inline-flex",color:"var(--faint)",marginBottom:14 }}><IconCamera size={34}/></div>
-                  <p style={{ fontSize:14,color:"var(--ink)",fontWeight:500,marginBottom:6 }}>{t.onboarding.addPhoto}</p>
-                  <p style={{ fontSize:13,lineHeight:1.6,fontWeight:300 }}>{t.onboarding.photoHint}<br/><span style={{ fontSize:11,color:"var(--faint)" }}>{t.onboarding.photoTypes}</span></p>
+              onChange={e=>{ const f=e.target.files?.[0]; if(f) onUpload(f); e.target.value=""; }} />
+
+            <div className="upload-zone" style={{ aspectRatio:"3/4",position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center" }}>
+              <img src={modelSrc} alt="Your model" style={{ position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover" }} />
+
+              {/* Badge */}
+              <div style={{ position:"absolute",top:12,left:12,display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,0.92)",backdropFilter:"blur(8px)",padding:"5px 11px",borderRadius:100,fontSize:12,fontWeight:500,
+                color: isTemplate ? "var(--muted)" : "#1a7a2e" }}>
+                {isTemplate ? <>{t.onboarding.usingTemplate}</> : <><IconCheck size={13}/> {t.onboarding.yourPhoto}</>}
+              </div>
+
+              {/* Replace control when showing the user's own photo */}
+              {!isTemplate && (
+                <button onClick={()=>fileRef.current?.click()}
+                  style={{ position:"absolute",bottom:12,right:12,background:"rgba(255,255,255,0.92)",border:"1px solid var(--border)",borderRadius:6,fontSize:12,padding:"7px 14px",cursor:"pointer",backdropFilter:"blur(8px)",color:"var(--ink)" }}>
+                  {t.onboarding.change}
+                </button>
+              )}
+
+              {avatarBusy && (
+                <div style={{ position:"absolute",inset:0,background:"rgba(255,255,255,0.78)",backdropFilter:"blur(2px)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12 }}>
+                  <div className="spinner-dark" style={{ width:26,height:26 }} />
+                  <p style={{ fontSize:13,color:"var(--ink)",fontWeight:500 }}>{t.onboarding.generatingAvatar}</p>
                 </div>
               )}
             </div>
-            {!photo && (
-              <button
-                type="button"
-                onClick={()=>cameraRef.current?.click()}
-                style={{ width:"100%",marginTop:12,padding:"13px",borderRadius:10,border:"1px solid var(--border)",background:"var(--card)",color:"var(--ink)",fontSize:14,fontWeight:500,fontFamily:"'Hanken Grotesk',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9 }}
-              >
-                <IconCamera size={18}/> {t.onboarding.takePhoto}
-              </button>
+
+            {isTemplate ? (
+              <>
+                <p style={{ fontSize:12,color:"var(--faint)",margin:"12px 2px 14px",lineHeight:1.6 }}>{t.onboarding.templateNote}</p>
+                <div style={{ display:"flex",gap:10 }}>
+                  <button type="button" onClick={()=>fileRef.current?.click()} disabled={avatarBusy}
+                    style={btnSecondary}>
+                    <IconUpload size={17}/> {t.onboarding.upload}
+                  </button>
+                  <button type="button" onClick={()=>setCam("direct")} disabled={avatarBusy}
+                    style={btnSecondary}>
+                    <IconCamera size={17}/> {t.onboarding.useCamera}
+                  </button>
+                </div>
+                <button type="button" onClick={()=>setCam("avatar")} disabled={avatarBusy}
+                  style={{ width:"100%",marginTop:10,padding:"12px",borderRadius:10,border:"1px dashed var(--border)",background:"transparent",color:"var(--muted)",fontSize:13,fontFamily:"'Hanken Grotesk',sans-serif",cursor:avatarBusy?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+                  <IconWand size={16}/> {t.onboarding.avatarFromSelfie}
+                </button>
+              </>
+            ) : (
+              <p style={{ fontSize:12,color:"var(--faint)",marginTop:14,lineHeight:1.6,textAlign:"center" }}>
+                {t.onboarding.lookingGood}
+              </p>
             )}
-            <p style={{ fontSize:12,color:"var(--faint)",marginTop:14,lineHeight:1.6,textAlign:"center" }}>
-              {stepDone ? t.onboarding.lookingGood : t.onboarding.becomesModel}
-            </p>
           </div>
         </div>
       </div>
+
+      {cam && (
+        <CameraCapture
+          onCapture={onCameraShot}
+          onClose={()=>setCam(null)}
+          onPickFile={()=>fileRef.current?.click()}
+        />
+      )}
     </div>
   );
 }
+
+const btnSecondary: React.CSSProperties = {
+  flex:1,padding:"13px",borderRadius:10,border:"1px solid var(--border)",background:"var(--card)",
+  color:"var(--ink)",fontSize:14,fontWeight:500,fontFamily:"'Hanken Grotesk',sans-serif",cursor:"pointer",
+  display:"flex",alignItems:"center",justifyContent:"center",gap:9,
+};

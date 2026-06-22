@@ -111,6 +111,7 @@ export default function TryOnApp() {
   const VERDICT_LABEL: Record<Verdict, string> = { buy: t.app.verdictBuy, skip: t.app.verdictSkip, maybe: t.app.verdictMaybe };
   const [uid, setUid]         = useState<string | null>(null);
   const [photo, setPhoto]     = useState<string | null>(null);
+  const [photoIsTemplate, setPhotoIsTemplate] = useState(false);
   const [garments, setGarments] = useState<GItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState<Result|null>(null);
@@ -150,6 +151,7 @@ export default function TryOnApp() {
     }
     const p = getProfile(u.uid);
     setPhoto(p.photo);
+    setPhotoIsTemplate(p.photoIsTemplate);
     setBody({ heightCm: p.heightCm, weightKg: p.weightKg, gender: p.gender });
     setCredits(creditsRemaining(u.uid));
     setPlan(getPlan(u.uid));
@@ -436,14 +438,19 @@ export default function TryOnApp() {
               <input ref={garmentRef} type="file" accept="image/*" style={{ display:"none" }} disabled={loading} onChange={e=>{const f=e.target.files?.[0];if(f)onGarment(f);e.target.value="";}}/>
               <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display:"none" }} disabled={loading} onChange={e=>{const f=e.target.files?.[0];if(f)onGarment(f);e.target.value="";}}/>
 
-              {/* Model chip — saved profile photo */}
-              <div style={{ display:"flex",alignItems:"center",gap:14,padding:"12px 14px",border:"1px solid var(--border)",borderRadius:12,background:"var(--card)",marginBottom:22 }}>
+              {/* Model chip — saved profile photo, or a stand-in model until they add their own */}
+              <div style={{ display:"flex",alignItems:"center",gap:14,padding:"12px 14px",border:photoIsTemplate?"1px solid var(--brand)":"1px solid var(--border)",borderRadius:12,background:photoIsTemplate?"color-mix(in srgb, var(--brand) 6%, var(--card))":"var(--card)",marginBottom:22 }}>
                 <img src={photo} alt="You" style={{ width:44,height:44,borderRadius:8,objectFit:"cover",flexShrink:0 }}/>
                 <div style={{ flex:1,minWidth:0 }}>
-                  <div style={{ fontSize:13,fontWeight:500,color:"var(--ink)" }}>{t.app.wearingYourPhoto}</div>
-                  <div style={{ fontSize:12,color:"var(--muted)",marginTop:1 }}>{t.app.fromFitProfile}</div>
+                  <div style={{ fontSize:13,fontWeight:500,color:"var(--ink)" }}>{photoIsTemplate ? t.app.wearingTemplate : t.app.wearingYourPhoto}</div>
+                  <div style={{ fontSize:12,color:"var(--muted)",marginTop:1 }}>{photoIsTemplate ? t.app.addYourPhotoSub : t.app.fromFitProfile}</div>
                 </div>
-                <Link href="/onboarding" style={{ fontSize:12,color:"var(--ink)",textDecoration:"none",border:"1px solid var(--border)",padding:"7px 14px",borderRadius:6 }}>{t.app.change}</Link>
+                <Link href="/onboarding" style={{ fontSize:12,textDecoration:"none",padding:"7px 14px",borderRadius:6,whiteSpace:"nowrap",
+                  ...(photoIsTemplate
+                    ? { color:"#fff",background:"var(--brand)",border:"1px solid var(--brand)",fontWeight:500 }
+                    : { color:"var(--ink)",border:"1px solid var(--border)" }) }}>
+                  {photoIsTemplate ? t.app.addMyPhoto : t.app.change}
+                </Link>
               </div>
 
               {/* Your look — one or more pieces, layered on you together */}
