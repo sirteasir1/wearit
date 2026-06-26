@@ -75,7 +75,7 @@ export default function ArenaPage() {
   const [credits, setCredits] = useState(0);
   const [wardrobe, setWardrobe] = useState<WardrobeItem[]>([]);
 
-  const [seedTheme, setSeedTheme] = useState<Theme | null>(null);
+  const [queueingId, setQueueingId] = useState<string | null>(null);
   const [matchId, setMatchId] = useState<string | null>(null);
   const [match, setMatch] = useState<ArenaMatch | null>(null);
   const [myLook, setMyLook] = useState<string | null>(null);    // chosen/generated look, before lock-in
@@ -145,19 +145,21 @@ export default function ArenaPage() {
 
   const resetToLobby = () => { setMatchId(null); setMatch(null); setMyLook(null); setVibes([]); judgedRef.current = false; };
 
-  const findRival = async () => {
+  // Tap a theme (or Surprise) to jump straight into matchmaking — no separate step.
+  const findRival = async (theme?: Theme | null) => {
     if (!uid || busy) return;
+    const chosen = theme || THEMES[Math.floor(Math.random() * THEMES.length)];
+    setQueueingId(theme ? chosen.id : "random");
     setBusy("queue");
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error("Sign in again");
-      const theme = seedTheme || THEMES[Math.floor(Math.random() * THEMES.length)];
       judgedRef.current = false;
-      const { matchId: id } = await joinQueue(token, { theme: theme.id, name });
+      const { matchId: id } = await joinQueue(token, { theme: chosen.id, name });
       setMatchId(id);
     } catch (e) {
       toast(e instanceof Error ? e.message : "Matchmaking failed", "error");
-    } finally { setBusy(null); }
+    } finally { setBusy(null); setQueueingId(null); }
   };
 
   const leave = async () => {
@@ -239,20 +241,27 @@ export default function ArenaPage() {
           {/* ── LOBBY ── */}
           {!matchId && (
             <motion.div key="lobby" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
-                <p style={{ ...lblStyle, marginBottom: 0 }}>{tr("pickTheme", lang)}</p>
-              </div>
+              {/* Primary action — one big Surprise card that drops you straight into a battle */}
+              <button onClick={() => findRival(null)} disabled={busy === "queue"} className="arena-surprise"
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
+                  padding: "22px 24px", borderRadius: 16, cursor: "pointer", textAlign: "left", marginBottom: 28,
+                  background: "var(--brand)", color: "#fff", border: "none", boxShadow: "0 14px 34px rgba(47,76,110,0.26)",
+                }}>
+                <div style={{ minWidth: 0 }}>
+                  <div className="serif" style={{ fontSize: 25, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.05 }}>{lang === "ru" ? "Случайная тема" : "Surprise me"}</div>
+                  <div style={{ fontSize: 13.5, color: "rgba(255,255,255,0.72)", marginTop: 5, fontWeight: 300 }}>{lang === "ru" ? "Сразу в баттл со случайной темой" : "Jump straight into a battle, random theme"}</div>
+                </div>
+                {queueingId === "random" ? <div className="spinner" style={{ width: 22, height: 22, flexShrink: 0 }} /> : <IconArrowRight size={22} style={{ flexShrink: 0 }} />}
+              </button>
+
+              <p style={{ ...lblStyle, marginBottom: 4 }}>{tr("pickTheme", lang)}</p>
               <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, fontWeight: 300 }}>{tr("themeHint", lang)}</p>
-              <div className="arena-scroll" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(146px,1fr))", gap: 9, marginBottom: 26, maxHeight: 392, overflowY: "auto", paddingRight: 2 }}>
-                <ThemeTile selected={!seedTheme} name={lang === "ru" ? "Случайная" : "Surprise me"} vibe={lang === "ru" ? "случайная тема" : "a random theme"} onClick={() => setSeedTheme(null)} />
+              <div className="arena-scroll" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 9, paddingBottom: 4 }}>
                 {THEMES.map((tm) => (
-                  <ThemeTile key={tm.id} selected={seedTheme?.id === tm.id} name={tm.label[lang]} vibe={tm.vibe[lang]} onClick={() => setSeedTheme(tm)} />
+                  <ThemeTile key={tm.id} name={tm.label[lang]} vibe={tm.vibe[lang]} loading={queueingId === tm.id} disabled={busy === "queue"} onClick={() => findRival(tm)} />
                 ))}
               </div>
-
-              <button onClick={findRival} disabled={busy === "queue"} className="btn-dark" style={ctaStyle}>
-                {busy === "queue" ? <><div className="spinner" style={{ width: 18, height: 18 }} /> {tr("searching", lang)}</> : tr("findRival", lang)}
-              </button>
             </motion.div>
           )}
 
@@ -508,23 +517,27 @@ function Bar({ label, v, revealed, d }: { label: string; v: number; revealed: bo
   );
 }
 
-/* An editorial theme card — name + one-line vibe. Inverts to ink/cream when
-   selected (a tactile, magazine-index feel; no emoji). */
-function ThemeTile({ selected, name, vibe, onClick }: { selected: boolean; name: string; vibe: string; onClick: () => void }) {
+/* An editorial theme card — name + one-line vibe. Tapping it starts a battle on
+   that theme. Light card; hover lifts the border to the brand color. No emoji. */
+function ThemeTile({ name, vibe, loading, disabled, onClick }: { name: string; vibe: string; loading: boolean; disabled: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick}
+    <button onClick={onClick} disabled={disabled}
       style={{
-        display: "flex", flexDirection: "column", justifyContent: "space-between", textAlign: "left",
-        padding: "13px 14px", borderRadius: 12, minHeight: 90, cursor: "pointer",
-        border: selected ? "1px solid var(--ink)" : "1px solid var(--border)",
-        background: selected ? "var(--ink)" : "var(--card)",
-        color: selected ? "var(--bg)" : "var(--ink)",
-        transition: "background .18s ease, color .18s ease, border-color .18s ease, transform .12s ease",
+        position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", textAlign: "left",
+        padding: "13px 14px", borderRadius: 12, minHeight: 92, cursor: disabled ? "default" : "pointer",
+        border: "1px solid var(--border)", background: "var(--card)", color: "var(--ink)",
+        opacity: disabled && !loading ? 0.5 : 1,
+        transition: "border-color .15s ease, box-shadow .15s ease",
       }}
-      onMouseEnter={(e) => { if (!selected) e.currentTarget.style.borderColor = "var(--ink)"; }}
-      onMouseLeave={(e) => { if (!selected) e.currentTarget.style.borderColor = "var(--border)"; }}>
-      <span className="serif" style={{ fontSize: 16.5, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.12 }}>{name}</span>
-      <span style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: "0.02em", marginTop: 10, color: selected ? "rgba(250,245,236,0.6)" : "var(--muted)" }}>{vibe}</span>
+      onMouseEnter={(e) => { if (!disabled) { e.currentTarget.style.borderColor = "var(--brand)"; e.currentTarget.style.boxShadow = "0 6px 18px rgba(47,76,110,0.12)"; } }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}>
+      <span className="serif" style={{ fontSize: 16.5, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.12, color: "var(--ink)" }}>{name}</span>
+      <span style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: "0.02em", marginTop: 10, color: "var(--muted)" }}>{vibe}</span>
+      {loading && (
+        <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,252,247,0.7)", borderRadius: 12 }}>
+          <span className="spinner-dark" style={{ width: 18, height: 18 }} />
+        </span>
+      )}
     </button>
   );
 }
