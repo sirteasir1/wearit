@@ -6,6 +6,7 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import type { Lang } from "./i18n";
 
 export interface BodyProfile {
   heightCm?: number | null;
@@ -24,7 +25,7 @@ export interface StyleAdvice {
   sizeReason: string;      // short why
 }
 
-function buildPrompt(p: BodyProfile): string {
+function buildPrompt(p: BodyProfile, lang: Lang): string {
   const bits: string[] = [];
   if (p.heightCm) bits.push(`height ${p.heightCm} cm`);
   if (p.weightKg) bits.push(`weight ${p.weightKg} kg`);
@@ -32,10 +33,12 @@ function buildPrompt(p: BodyProfile): string {
   const body = bits.length
     ? `The person's measurements: ${bits.join(", ")}. Use these to judge fit and recommend a size.`
     : `No measurements were provided — infer fit from the photo and give a best-guess size.`;
+  const language = lang === "ru" ? "Russian" : "English";
 
   return `You are an expert fashion stylist and fit specialist. Analyze this virtual try-on photo.
 ${body}
 Evaluate: fit, proportions, color harmony, overall style impact. Then recommend the single best size to actually order (use standard letter sizing XS/S/M/L/XL/XXL, or a numeric size if it's clearly bottoms/denim).
+Write every text value (summary, pros, cons, tip, sizeReason) in ${language}. Keep "recommendedSize" as a size code (e.g. M, L, 32).
 Respond ONLY with valid JSON, no markdown, no extra text:
 {
   "verdict": "buy" | "skip" | "maybe",
@@ -52,7 +55,8 @@ Be honest, direct, specific. No fluff.`;
 
 export async function getStyleAdvice(
   resultDataUrl: string,
-  profile: BodyProfile = {}
+  profile: BodyProfile = {},
+  lang: Lang = "en"
 ): Promise<StyleAdvice> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -78,7 +82,7 @@ export async function getStyleAdvice(
 
     const result = await model.generateContent([
       { inlineData: { mimeType: "image/png", data: base64 } },
-      buildPrompt(profile),
+      buildPrompt(profile, lang),
     ]);
 
     const text = result.response.text();

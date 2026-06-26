@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Too many requests." }, { status: 429 });
   }
 
-  let body: { modelImageUrl: string; garmentImageUrl: string };
+  let body: { modelImageUrl: string; garmentImageUrl: string; lang?: string };
   try {
     body = await request.json();
   } catch {
@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { modelImageUrl, garmentImageUrl } = body;
+  const lang = body.lang === "ru" ? "ru" : "en";
   if (!modelImageUrl || !garmentImageUrl) {
     return NextResponse.json({ error: "Both image URLs required" }, { status: 400 });
   }
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const resultDataUrl = await runTryOn(modelImageUrl, garmentImageUrl);
-    const styleAdvice   = await getStyleAdvice(resultDataUrl);
+    const styleAdvice   = await getStyleAdvice(resultDataUrl, {}, lang);
 
     const tryonRef = db.collection("users").doc(uid).collection("tryons").doc();
     await Promise.all([

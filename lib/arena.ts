@@ -4,8 +4,6 @@
    (never the body) and crowns a winner. Match state is a Firestore doc both
    clients watch via onSnapshot, so the battle updates live on both screens. */
 
-import { onSnapshot, doc } from "firebase/firestore";
-import { db } from "./firebase";
 import type { Lang } from "./i18n";
 
 /* ── Themes ── the shared brief that makes a battle fast AND fair. ── */
@@ -29,6 +27,21 @@ export const THEMES: Theme[] = [
   { id: "gym-fashion", emoji: "💪", label: { en: "Gym but make it fashion",  ru: "Зал, но с понтами" },        brief: "a fashionable athleisure gym outfit that still looks designed" },
   { id: "wedding",     emoji: "💍", label: { en: "Wedding guest",            ru: "Гость на свадьбе" },         brief: "an elegant wedding-guest outfit" },
   { id: "villain",     emoji: "🕶️", label: { en: "Quiet-luxury villain",     ru: "Тихий злодей" },             brief: "a sleek all-black quiet-luxury 'villain' outfit" },
+  // ── niche / meme / current aesthetics ──
+  { id: "met-gala",    emoji: "🪅", label: { en: "Met Gala",                 ru: "Мет Гала" },                 brief: "an avant-garde, over-the-top Met Gala red-carpet look that commits to a bold concept" },
+  { id: "f1-paddock",  emoji: "🏎️", label: { en: "F1 paddock",               ru: "Паддок Ф1" },                brief: "a chic, sporty F1 paddock-club race-day outfit — racing-luxe, team colors, cool sunglasses" },
+  { id: "max-aura",    emoji: "🌫️", label: { en: "+1000 aura",               ru: "+1000 ауры" },               brief: "an effortlessly cool outfit radiating maximum 'aura' — mysterious, confident, understated power, mostly black" },
+  { id: "mob-wife",    emoji: "🐆", label: { en: "Mob wife",                 ru: "Жена мафии" },               brief: "a glamorous 'mob wife' aesthetic outfit — faux fur coat, leopard print, gold jewelry, oversized sunglasses" },
+  { id: "office-siren",emoji: "👓", label: { en: "Office siren",             ru: "Офисная сирена" },           brief: "an 'office siren' outfit — sleek pencil skirt, fitted blouse, thin glasses, sultry corporate" },
+  { id: "coquette",    emoji: "🎀", label: { en: "Coquette",                 ru: "Кокетка" },                  brief: "a coquette-aesthetic outfit — bows, lace, soft pastels, ballet flats, romantic and girly" },
+  { id: "brat",        emoji: "🟢", label: { en: "Brat summer",              ru: "Brat-лето" },                brief: "a 'brat' aesthetic outfit — slime green, lowkey clubby, messy-cool 2000s party energy" },
+  { id: "gorpcore",    emoji: "🧗", label: { en: "Gorpcore",                 ru: "Горпкор" },                  brief: "a gorpcore outfit — technical outdoor gear as fashion: fleece, shell jacket, cargo pants, trail sneakers" },
+  { id: "blokecore",   emoji: "⚽", label: { en: "Blokecore",                ru: "Блоукор" },                  brief: "a blokecore outfit — vintage football jersey, straight jeans, retro terrace sneakers" },
+  { id: "clean-girl",  emoji: "🧴", label: { en: "Clean girl",               ru: "Чистюля" },                  brief: "a 'clean girl' aesthetic outfit — slicked hair, gold hoops, minimal neutral athleisure, polished and simple" },
+  { id: "goblin-mode", emoji: "👹", label: { en: "Goblin mode",              ru: "Режим гоблина" },            brief: "a 'goblin mode' outfit — deliberately chaotic but cozy: oversized hoodie, mismatched comfy layers, unbothered" },
+  { id: "demure",      emoji: "🤫", label: { en: "Very demure",              ru: "Скромно и мило" },           brief: "a 'very demure, very mindful' outfit — modest, polished, understated workwear in soft neutral tones" },
+  { id: "dark-academia",emoji:"📚", label: { en: "Dark academia",            ru: "Тёмная академия" },          brief: "a dark-academia outfit — tweed blazer, wool, pleated trousers or skirt, vintage scholarly layers" },
+  { id: "eboy-egirl",  emoji: "🖤", label: { en: "E-boy / e-girl",           ru: "Иган-стиль" },               brief: "an e-boy/e-girl outfit — black layers, chains, striped long sleeve, baggy pants, grungy internet style" },
 ];
 
 export function themeById(id: string): Theme | undefined {
@@ -148,11 +161,16 @@ export async function leaveMatch(token: string, matchId: string): Promise<void> 
   }).catch(() => {});
 }
 
-/* Live subscription to a match doc — drives both players' screens in real time. */
-export function subscribeMatch(matchId: string, cb: (m: ArenaMatch | null) => void): () => void {
-  return onSnapshot(
-    doc(db, "arena_matches", matchId),
-    (snap) => cb(snap.exists() ? (snap.data() as ArenaMatch) : null),
-    () => cb(null),
-  );
+/* Poll the live match state from the server (Admin-read, so it works without any
+   client Firestore read rules). Returns null if the match is gone. */
+export async function fetchMatchState(token: string, matchId: string): Promise<ArenaMatch | null> {
+  const r = await fetch("/api/arena/state", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ matchId }),
+    cache: "no-store",
+  });
+  if (!r.ok) return null;
+  const d = await r.json();
+  return (d.match as ArenaMatch | null) ?? null;
 }

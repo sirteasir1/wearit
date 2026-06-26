@@ -106,8 +106,21 @@ function Confetti() {
   );
 }
 
+/* Rounded-rect path that works even where CanvasRenderingContext2D.roundRect
+   isn't implemented (older Safari) — otherwise the story card throws. */
+function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  const c = ctx as CanvasRenderingContext2D & { roundRect?: (x: number, y: number, w: number, h: number, r: number) => void };
+  if (typeof c.roundRect === "function") { c.roundRect(x, y, w, h, r); return; }
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
 export default function TryOnApp() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const VERDICT_LABEL: Record<Verdict, string> = { buy: t.app.verdictBuy, skip: t.app.verdictSkip, maybe: t.app.verdictMaybe };
   const [uid, setUid]         = useState<string | null>(null);
   const [photo, setPhoto]     = useState<string | null>(null);
@@ -286,6 +299,7 @@ export default function TryOnApp() {
       if (body.heightCm) fd.append("heightCm", String(body.heightCm));
       if (body.weightKg) fd.append("weightKg", String(body.weightKg));
       if (body.gender)   fd.append("gender", body.gender);
+      fd.append("lang", lang);
       const token = await auth.currentUser?.getIdToken();
       const r = await fetch("/api/tryon-demo", {
         method: "POST",
@@ -415,10 +429,15 @@ export default function TryOnApp() {
     ctx.font = "400 30px 'Hanken Grotesk', sans-serif";
     ctx.fillText(t.app.shareText, W / 2, 220);
 
-    // the look, contained in a rounded frame
+    // the look, contained in a rounded frame. Load as a data URL (no crossOrigin —
+    // a remote URL would taint the canvas and break toBlob), via fetch→objectURL
+    // so even non-dataURL results draw cleanly.
+    const src = result!.resultImageUrl;
+    const objUrl = src.startsWith("data:") ? null : URL.createObjectURL(await (await fetch(src)).blob());
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const im = new Image(); im.crossOrigin = "anonymous";
-      im.onload = () => resolve(im); im.onerror = reject; im.src = result!.resultImageUrl;
+      const im = new Image();
+      im.onload = () => resolve(im); im.onerror = () => reject(new Error("image load failed"));
+      im.src = objUrl || src;
     });
     const fx = 90, fy = 290, fw = W - 180, fh = 1180, rad = 40;
     const scale = Math.min(fw / img.width, fh / img.height);
@@ -426,11 +445,12 @@ export default function TryOnApp() {
     const dx = fx + (fw - dw) / 2, dy = fy + (fh - dh) / 2;
     ctx.save();
     ctx.beginPath();
-    ctx.roundRect(fx, fy, fw, fh, rad);
+    roundRectPath(ctx, fx, fy, fw, fh, rad); // feature-detects ctx.roundRect
     ctx.fillStyle = "#0E0B07"; ctx.fill();
     ctx.clip();
     ctx.drawImage(img, dx, dy, dw, dh);
     ctx.restore();
+    if (objUrl) URL.revokeObjectURL(objUrl);
 
     // verdict pill + score, bottom
     const vlabel = (VERDICT_LABEL[result!.styleAdvice.verdict] || "").toUpperCase();
@@ -445,8 +465,12 @@ export default function TryOnApp() {
     ctx.font = "400 32px 'Hanken Grotesk', sans-serif";
     ctx.fillText("wearit · try it on", W / 2, 1820);
 
-    const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), "image/png", 0.92));
-    return new File([blob], "wearit-story.png", { type: "image/png" });
+    const blob: Blob | null = await new Promise((res) => canvas.toBlob((b) => res(b), "image/png", 0.92));
+    if (blob) return new File([blob], "wearit-story.png", { type: "image/png" });
+    // Fallback if toBlob is unavailable/blocked — build the File from a data URL.
+    const dataUrl = canvas.toDataURL("image/png");
+    const buf = await (await fetch(dataUrl)).blob();
+    return new File([buf], "wearit-story.png", { type: "image/png" });
   };
 
   /* One-tap "share to Stories": build the card and hand it to the native share
@@ -469,8 +493,20 @@ export default function TryOnApp() {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast(t.app.storyReady, "success");
       window.open("https://www.instagram.com/", "_blank");
-    } catch {
-      toast(t.app.somethingWrong, "error");
+    } catch (e) {
+      // Card composition failed for some reason — never dead-end: share/save the
+      // plain look so the user can still post it.
+      console.error("[shareStory]", e);
+      try {
+        const file = await getResultFile();
+        const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+        if (nav.canShare && nav.canShare({ files: [file] })) { await nav.share({ files: [file], text: SHARE_TEXT, title: "Wearit" }); return; }
+        await downloadImage();
+        toast(t.app.storyReady, "success");
+        window.open("https://www.instagram.com/", "_blank");
+      } catch {
+        toast(t.app.somethingWrong, "error");
+      }
     }
   };
 

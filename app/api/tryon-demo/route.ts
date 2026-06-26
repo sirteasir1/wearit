@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
   const heightCm = formData.get("heightCm") ? Number(formData.get("heightCm")) : null;
   const weightKg = formData.get("weightKg") ? Number(formData.get("weightKg")) : null;
   const gender   = (formData.get("gender") as string | null) || "";
+  const lang     = (formData.get("lang") as string | null) === "ru" ? "ru" : "en";
 
   if (!modelImage || garments.length === 0) {
     return NextResponse.json({ error: "A photo and at least one garment are required" }, { status: 400 });
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
       heightCm,
       weightKg,
       gender: gender as "female" | "male" | "other" | "",
-    });
+    }, lang);
 
     return NextResponse.json({
       resultImageUrl: resultDataUrl,

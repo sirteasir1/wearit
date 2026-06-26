@@ -9,7 +9,7 @@ import {
   getProfile, getWardrobe, WardrobeItem, creditsRemaining, incTryOns, dataURLToThumb,
 } from "@/lib/store";
 import {
-  THEMES, VIBES, generateLook, joinQueue, submitLook, triggerJudge, leaveMatch, subscribeMatch,
+  THEMES, VIBES, generateLook, joinQueue, submitLook, triggerJudge, leaveMatch, fetchMatchState,
   type Theme, type ArenaMatch, type LookScore,
 } from "@/lib/arena";
 import { useI18n, type Lang } from "@/lib/i18n";
@@ -94,11 +94,23 @@ export default function ArenaPage() {
     setWardrobe(getWardrobe(u.uid));
   }), []);
 
-  // Live match subscription — drives both players' screens.
+  // Live match state via server polling (no client Firestore read rules needed).
   useEffect(() => {
     if (!matchId) return;
-    const unsub = subscribeMatch(matchId, setMatch);
-    return () => unsub();
+    let alive = true;
+    const poll = async () => {
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) return;
+        const m = await fetchMatchState(token, matchId);
+        if (!alive) return;
+        setMatch(m);
+        if (m?.status === "done") clearInterval(iv); // freeze once the verdict is in
+      } catch { /* transient — keep polling */ }
+    };
+    const iv = setInterval(poll, 1600);
+    poll();
+    return () => { alive = false; clearInterval(iv); };
   }, [matchId]);
 
   // Build-phase countdown tick.
@@ -220,7 +232,7 @@ export default function ArenaPage() {
 
         <AnimatePresence mode="wait">
           {/* ── LOBBY ── */}
-          {!match && (
+          {!matchId && (
             <motion.div key="lobby" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }}>
               {/* how it works */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, marginBottom: 28 }}>
@@ -247,8 +259,8 @@ export default function ArenaPage() {
             </motion.div>
           )}
 
-          {/* ── SEARCHING ── */}
-          {status === "waiting" && (
+          {/* ── SEARCHING ── (shows instantly while the first poll resolves) */}
+          {matchId && (!match || status === "waiting") && (
             <motion.div key="searching" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ textAlign: "center", padding: "60px 20px" }}>
               <motion.div animate={{ scale: [1, 1.12, 1], opacity: [0.6, 1, 0.6] }} transition={{ duration: 1.4, repeat: Infinity }} style={{ fontSize: 56, marginBottom: 22 }}>🛰️</motion.div>
               <h2 className="serif" style={{ fontSize: 24, fontWeight: 600, color: "var(--ink)", marginBottom: 8 }}>{tr("searching", lang)}</h2>
