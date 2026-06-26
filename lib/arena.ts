@@ -2,65 +2,36 @@
    Two players are matched in real time, handed the SAME theme, each builds a look
    (pick a saved look, or generate a fresh one), and an AI judge scores the CLOTHES
    (never the body) and crowns a winner. Match state is a Firestore doc both
-   clients watch via onSnapshot, so the battle updates live on both screens. */
+   clients poll via /api/arena/state, so the battle updates on both screens. */
 
 import type { Lang } from "./i18n";
 
-/* ── Themes ── the shared brief that makes a battle fast AND fair. ── */
+/* ── Themes ── a tight, punchy set. Each has a one-line VIBE shown on the card
+   (no emoji — the typography carries it) and an English BRIEF for the model/judge. */
 export interface Theme {
   id: string;
-  emoji: string;
   label: Record<Lang, string>;
-  brief: string; // English brief fed to the image model + judge (stable across UI langs)
+  vibe: Record<Lang, string>;
+  brief: string;
 }
 
 export const THEMES: Theme[] = [
-  { id: "rainy-date",  emoji: "☔", label: { en: "Rainy first date",        ru: "Свидание под дождём" },     brief: "a stylish but practical outfit for a first date in the rain" },
-  { id: "y2k",         emoji: "💿", label: { en: "Y2K throwback",            ru: "Стиль нулевых" },            brief: "an authentic early-2000s Y2K outfit" },
-  { id: "old-money",   emoji: "🥂", label: { en: "Old-money vacation",       ru: "Богатей на отдыхе" },        brief: "a quiet-luxury old-money vacation outfit" },
-  { id: "apocalypse",  emoji: "🧟", label: { en: "Zombie office party",      ru: "Корпоратив в апокалипсис" }, brief: "an outfit for an office party during a zombie apocalypse — practical yet dressy" },
-  { id: "festival",    emoji: "🎪", label: { en: "Music festival",           ru: "Музыкальный фестиваль" },    brief: "a bold music-festival outfit" },
-  { id: "cyberpunk",   emoji: "🌃", label: { en: "Cyberpunk 2099",           ru: "Киберпанк 2099" },           brief: "a futuristic cyberpunk streetwear outfit" },
-  { id: "cozy-sunday", emoji: "☕", label: { en: "Cozy Sunday",              ru: "Уютное воскресенье" },       brief: "a cozy, comfortable lazy-Sunday-at-home outfit" },
-  { id: "red-carpet",  emoji: "🌟", label: { en: "Red carpet",               ru: "Красная дорожка" },          brief: "a glamorous red-carpet evening look" },
-  { id: "streetwear",  emoji: "🛹", label: { en: "Streetwear",               ru: "Уличный стиль" },            brief: "a fresh modern streetwear fit" },
-  { id: "gym-fashion", emoji: "💪", label: { en: "Gym but make it fashion",  ru: "Зал, но с понтами" },        brief: "a fashionable athleisure gym outfit that still looks designed" },
-  { id: "wedding",     emoji: "💍", label: { en: "Wedding guest",            ru: "Гость на свадьбе" },         brief: "an elegant wedding-guest outfit" },
-  { id: "villain",     emoji: "🕶️", label: { en: "Quiet-luxury villain",     ru: "Тихий злодей" },             brief: "a sleek all-black quiet-luxury 'villain' outfit" },
-  // ── niche / meme / current aesthetics ──
-  { id: "met-gala",    emoji: "🪅", label: { en: "Met Gala",                 ru: "Мет Гала" },                 brief: "an avant-garde, over-the-top Met Gala red-carpet look that commits to a bold concept" },
-  { id: "f1-paddock",  emoji: "🏎️", label: { en: "F1 paddock",               ru: "Паддок Ф1" },                brief: "a chic, sporty F1 paddock-club race-day outfit — racing-luxe, team colors, cool sunglasses" },
-  { id: "max-aura",    emoji: "🌫️", label: { en: "+1000 aura",               ru: "+1000 ауры" },               brief: "an effortlessly cool outfit radiating maximum 'aura' — mysterious, confident, understated power, mostly black" },
-  { id: "mob-wife",    emoji: "🐆", label: { en: "Mob wife",                 ru: "Жена мафии" },               brief: "a glamorous 'mob wife' aesthetic outfit — faux fur coat, leopard print, gold jewelry, oversized sunglasses" },
-  { id: "office-siren",emoji: "👓", label: { en: "Office siren",             ru: "Офисная сирена" },           brief: "an 'office siren' outfit — sleek pencil skirt, fitted blouse, thin glasses, sultry corporate" },
-  { id: "coquette",    emoji: "🎀", label: { en: "Coquette",                 ru: "Кокетка" },                  brief: "a coquette-aesthetic outfit — bows, lace, soft pastels, ballet flats, romantic and girly" },
-  { id: "brat",        emoji: "🟢", label: { en: "Brat summer",              ru: "Brat-лето" },                brief: "a 'brat' aesthetic outfit — slime green, lowkey clubby, messy-cool 2000s party energy" },
-  { id: "gorpcore",    emoji: "🧗", label: { en: "Gorpcore",                 ru: "Горпкор" },                  brief: "a gorpcore outfit — technical outdoor gear as fashion: fleece, shell jacket, cargo pants, trail sneakers" },
-  { id: "blokecore",   emoji: "⚽", label: { en: "Blokecore",                ru: "Блоукор" },                  brief: "a blokecore outfit — vintage football jersey, straight jeans, retro terrace sneakers" },
-  { id: "clean-girl",  emoji: "🧴", label: { en: "Clean girl",               ru: "Чистюля" },                  brief: "a 'clean girl' aesthetic outfit — slicked hair, gold hoops, minimal neutral athleisure, polished and simple" },
-  { id: "goblin-mode", emoji: "👹", label: { en: "Goblin mode",              ru: "Режим гоблина" },            brief: "a 'goblin mode' outfit — deliberately chaotic but cozy: oversized hoodie, mismatched comfy layers, unbothered" },
-  { id: "demure",      emoji: "🤫", label: { en: "Very demure",              ru: "Скромно и мило" },           brief: "a 'very demure, very mindful' outfit — modest, polished, understated workwear in soft neutral tones" },
-  { id: "dark-academia",emoji:"📚", label: { en: "Dark academia",            ru: "Тёмная академия" },          brief: "a dark-academia outfit — tweed blazer, wool, pleated trousers or skirt, vintage scholarly layers" },
-  { id: "eboy-egirl",  emoji: "🖤", label: { en: "E-boy / e-girl",           ru: "Иган-стиль" },               brief: "an e-boy/e-girl outfit — black layers, chains, striped long sleeve, baggy pants, grungy internet style" },
-  // ── more TikTok / niche / trending aesthetics ──
-  { id: "tomato-girl", emoji: "🍅", label: { en: "Tomato girl",              ru: "Tomato girl" },              brief: "a 'tomato girl' Italian-summer outfit — red prints, linen, sundress, breezy Mediterranean vibe" },
-  { id: "coastal-gma", emoji: "🧺", label: { en: "Coastal grandma",          ru: "Бабуля у моря" },            brief: "a 'coastal grandmother' outfit — linen, neutral knits, straw hat, relaxed seaside chic" },
-  { id: "balletcore",  emoji: "🩰", label: { en: "Balletcore",               ru: "Балеткор" },                 brief: "a balletcore outfit — soft pastels, wrap top, leg warmers, ballet flats, dancer-inspired" },
-  { id: "mermaidcore", emoji: "🧜", label: { en: "Mermaidcore",              ru: "Русалкокор" },               brief: "a mermaidcore outfit — iridescent fabrics, scale textures, sea-blue and pearl tones, flowing shapes" },
-  { id: "cottagecore", emoji: "🍄", label: { en: "Cottagecore",              ru: "Коттеджкор" },               brief: "a cottagecore outfit — floral prints, prairie dress, cardigan, soft rural romantic style" },
-  { id: "indie-sleaze",emoji: "🚬", label: { en: "Indie sleaze",             ru: "Инди-слиз" },                brief: "an indie sleaze outfit — messy 2010s party style, leather jacket, band tee, skinny jeans, flash-photo grunge" },
-  { id: "tenniscore",  emoji: "🎾", label: { en: "Tenniscore",               ru: "Теннискор" },                brief: "a tenniscore outfit — pleated skirt, polo, sweater vest, preppy sporty country-club look" },
-  { id: "rockstar-gf", emoji: "🎸", label: { en: "Rockstar girlfriend",      ru: "Девушка рокзвезды" },        brief: "a 'rockstar girlfriend' outfit — leather, vintage band tee, fur coat, edgy effortless cool" },
-  { id: "whimsigoth",  emoji: "🔮", label: { en: "Whimsigoth",               ru: "Вимсигот" },                 brief: "a whimsigoth outfit — dark mystical 90s style, velvet, star and moon motifs, witchy layers" },
-  { id: "acubi",       emoji: "🦋", label: { en: "Acubi",                    ru: "Acubi" },                    brief: "an acubi Korean Y2K outfit — sleek low-rise, butterfly motifs, cyber-grunge minimal streetwear" },
-  { id: "roman-empire",emoji: "🏛️", label: { en: "Roman Empire",             ru: "Римская империя" },          brief: "a modern outfit inspired by the Roman Empire — toga-draped silhouettes, gladiator sandals, gold, marble tones" },
-  { id: "sigma",       emoji: "📈", label: { en: "Sigma grindset",           ru: "Сигма" },                    brief: "a 'sigma grindset' outfit — sharp dark business-casual, turtleneck or fitted suit, lone-wolf CEO energy" },
-  { id: "tradwife",    emoji: "🥧", label: { en: "Tradwife",                 ru: "Традвайф" },                 brief: "a 'tradwife' outfit — 1950s housewife style, fitted floral dress, apron, pearls, retro homemaker chic" },
-  { id: "twilight",    emoji: "🐺", label: { en: "2012 Tumblr",              ru: "Twilight 2012" },            brief: "a 2012-Tumblr / Twilight-era outfit — moody flannel, band tees, infinity scarf, grungy small-town vibe" },
-  { id: "eclectic-gpa",emoji: "🧓", label: { en: "Eclectic grandpa",         ru: "Дедуля-эстет" },             brief: "an 'eclectic grandpa' outfit — cozy knit vest, corduroy, patterned shirt, vintage layered menswear" },
-  { id: "rich-mom",    emoji: "🛍️", label: { en: "Rich mom",                 ru: "Богатая мама" },             brief: "a 'rich mom' outfit — oversized blazer, leggings, designer bag, sleek sunglasses, polished off-duty luxe" },
-  { id: "blueberry-milk",emoji:"🫐", label: { en: "Blueberry milk",           ru: "Черничное молоко" },         brief: "a 'blueberry milk' outfit — soft blue and white pastel coordinated look, cozy and dreamy" },
-  { id: "jellyfish",   emoji: "🪼", label: { en: "Avant-garde",              ru: "Авангард" },                 brief: "an avant-garde experimental outfit — sculptural shapes, unexpected proportions, runway art-fashion" },
+  { id: "met-gala",    label: { en: "Met Gala",     ru: "Мет Гала" },         vibe: { en: "Avant-garde, no rules",   ru: "Авангард без правил" },   brief: "an avant-garde, over-the-top Met Gala red-carpet look that commits to a bold concept" },
+  { id: "max-aura",    label: { en: "+1000 Aura",   ru: "+1000 ауры" },       vibe: { en: "All black, pure mystery", ru: "Весь чёрный, загадка" },  brief: "an effortlessly cool outfit radiating maximum 'aura' — mysterious, confident, understated power, mostly black" },
+  { id: "mob-wife",    label: { en: "Mob Wife",     ru: "Жена мафии" },       vibe: { en: "Fur, leopard, gold",      ru: "Мех, леопард, золото" },  brief: "a glamorous 'mob wife' aesthetic outfit — faux fur coat, leopard print, gold jewelry, oversized sunglasses" },
+  { id: "old-money",   label: { en: "Old Money",    ru: "Старые деньги" },    vibe: { en: "Quiet luxury",            ru: "Тихая роскошь" },         brief: "a quiet-luxury old-money outfit — refined tailoring, neutral palette, understated wealth" },
+  { id: "f1-paddock",  label: { en: "F1 Paddock",   ru: "Паддок Ф1" },        vibe: { en: "Race-day luxe",           ru: "Гоночный люкс" },         brief: "a chic, sporty F1 paddock-club race-day outfit — racing-luxe, team colors, cool sunglasses" },
+  { id: "brat",        label: { en: "Brat",         ru: "Brat" },             vibe: { en: "Slime-green chaos",       ru: "Кислотный хаос" },        brief: "a 'brat' aesthetic outfit — slime green, lowkey clubby, messy-cool 2000s party energy" },
+  { id: "cyberpunk",   label: { en: "Cyberpunk",    ru: "Киберпанк" },        vibe: { en: "Neon dystopia",           ru: "Неоновая дистопия" },     brief: "a futuristic cyberpunk streetwear outfit — neon accents, techwear, dystopian edge" },
+  { id: "red-carpet",  label: { en: "Red Carpet",   ru: "Красная дорожка" },  vibe: { en: "Full glamour",            ru: "Полный гламур" },         brief: "a glamorous red-carpet evening look — show-stopping, elegant, photographed" },
+  { id: "streetwear",  label: { en: "Streetwear",   ru: "Стритвир" },         vibe: { en: "Hypebeast fits",          ru: "Хайповые сеты" },         brief: "a fresh modern streetwear fit — hyped sneakers, layered, confident street style" },
+  { id: "y2k",         label: { en: "Y2K",          ru: "Y2K" },              vibe: { en: "2000s revival",           ru: "Возврат нулевых" },       brief: "an authentic early-2000s Y2K outfit — low-rise, metallics, baby tees, playful" },
+  { id: "coquette",    label: { en: "Coquette",     ru: "Кокетка" },          vibe: { en: "Bows & lace",             ru: "Банты и кружево" },       brief: "a coquette-aesthetic outfit — bows, lace, soft pastels, ballet flats, romantic and girly" },
+  { id: "gorpcore",    label: { en: "Gorpcore",     ru: "Горпкор" },          vibe: { en: "Techwear outdoors",       ru: "Техно-аутдор" },          brief: "a gorpcore outfit — technical outdoor gear as fashion: fleece, shell jacket, cargo pants, trail sneakers" },
+  { id: "rockstar-gf", label: { en: "Rockstar GF",  ru: "Подруга рокзвезды" },vibe: { en: "Leather & grunge",        ru: "Кожа и грандж" },         brief: "a 'rockstar girlfriend' outfit — leather, vintage band tee, fur coat, edgy effortless cool" },
+  { id: "villain",     label: { en: "The Villain",  ru: "Злодей" },           vibe: { en: "All-black power",         ru: "Чёрная сила" },           brief: "a sleek all-black quiet-luxury 'villain' outfit — sharp, intimidating, expensive" },
+  { id: "festival",    label: { en: "Festival",     ru: "Фестиваль" },        vibe: { en: "Bold & free",             ru: "Смело и свободно" },      brief: "a bold music-festival outfit — expressive, layered, free-spirited" },
+  { id: "clean-girl",  label: { en: "Clean Girl",   ru: "Clean girl" },       vibe: { en: "Polished minimal",        ru: "Чистый минимал" },        brief: "a 'clean girl' aesthetic outfit — slicked hair, gold hoops, minimal neutral athleisure, polished and simple" },
 ];
 
 export function themeById(id: string): Theme | undefined {
