@@ -389,6 +389,91 @@ export default function TryOnApp() {
     return false;
   };
 
+  /* Compose a branded 9:16 STORY card (1080×1920) so the look lands in Instagram
+     Stories looking designed, not like a cropped try-on photo. Returns a PNG File. */
+  const buildStoryCard = async (): Promise<File> => {
+    const W = 1080, H = 1920;
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d")!;
+
+    // warm dark backdrop with a soft gold pool (matches the brand)
+    ctx.fillStyle = "#16120D";
+    ctx.fillRect(0, 0, W, H);
+    const glow = ctx.createRadialGradient(W / 2, 560, 80, W / 2, 560, 900);
+    glow.addColorStop(0, "rgba(176,138,62,0.22)");
+    glow.addColorStop(1, "rgba(22,18,13,0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+
+    // brand wordmark, top
+    ctx.fillStyle = "#F2E9D9";
+    ctx.textAlign = "center";
+    ctx.font = "700 58px 'Bricolage Grotesque', Georgia, serif";
+    ctx.fillText("WEARIT", W / 2, 168);
+    ctx.fillStyle = "rgba(242,233,217,0.5)";
+    ctx.font = "400 30px 'Hanken Grotesk', sans-serif";
+    ctx.fillText(t.app.shareText, W / 2, 220);
+
+    // the look, contained in a rounded frame
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const im = new Image(); im.crossOrigin = "anonymous";
+      im.onload = () => resolve(im); im.onerror = reject; im.src = result!.resultImageUrl;
+    });
+    const fx = 90, fy = 290, fw = W - 180, fh = 1180, rad = 40;
+    const scale = Math.min(fw / img.width, fh / img.height);
+    const dw = img.width * scale, dh = img.height * scale;
+    const dx = fx + (fw - dw) / 2, dy = fy + (fh - dh) / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(fx, fy, fw, fh, rad);
+    ctx.fillStyle = "#0E0B07"; ctx.fill();
+    ctx.clip();
+    ctx.drawImage(img, dx, dy, dw, dh);
+    ctx.restore();
+
+    // verdict pill + score, bottom
+    const vlabel = (VERDICT_LABEL[result!.styleAdvice.verdict] || "").toUpperCase();
+    const vcolor = VERDICT[result!.styleAdvice.verdict]?.color || "#B08A3E";
+    ctx.fillStyle = vcolor;
+    ctx.font = "600 38px 'Hanken Grotesk', sans-serif";
+    ctx.fillText(vlabel, W / 2, 1600);
+    ctx.fillStyle = "#F2E9D9";
+    ctx.font = "700 120px 'Bricolage Grotesque', Georgia, serif";
+    ctx.fillText(`${result!.styleAdvice.score}/10`, W / 2, 1740);
+    ctx.fillStyle = "rgba(242,233,217,0.42)";
+    ctx.font = "400 32px 'Hanken Grotesk', sans-serif";
+    ctx.fillText("wearit · try it on", W / 2, 1820);
+
+    const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), "image/png", 0.92));
+    return new File([blob], "wearit-story.png", { type: "image/png" });
+  };
+
+  /* One-tap "share to Stories": build the card and hand it to the native share
+     sheet (the only reliable web path into Instagram Stories). Desktop falls back
+     to saving the card and opening Instagram so it can be posted manually. */
+  const shareStory = async () => {
+    if (!result) return;
+    try {
+      const file = await buildStoryCard();
+      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+      if (nav.canShare && nav.canShare({ files: [file] })) {
+        await nav.share({ files: [file], text: SHARE_TEXT, title: "Wearit" });
+        return;
+      }
+      // Desktop / unsupported: download the card, then open Instagram to post it.
+      const url = URL.createObjectURL(file);
+      const a = document.createElement("a");
+      a.href = url; a.download = "wearit-story.png";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast(t.app.storyReady, "success");
+      window.open("https://www.instagram.com/", "_blank");
+    } catch {
+      toast(t.app.somethingWrong, "error");
+    }
+  };
+
   const share = async (platform: string) => {
     if (!result) return;
     if (platform === "copy") { await navigator.clipboard.writeText(result.resultImageUrl); toast(t.common.linkCopied); return; }
@@ -693,6 +778,11 @@ export default function TryOnApp() {
 
                 <div>
                   <p style={{ fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--faint)",marginBottom:10 }}>{t.app.shareYourLook}</p>
+                  <button onClick={shareStory}
+                    style={{ width:"100%",padding:"14px",fontSize:14.5,fontWeight:600,borderRadius:10,marginBottom:10,cursor:"pointer",border:"none",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",gap:9,
+                      background:"linear-gradient(95deg,#FEDA77,#F58529 28%,#DD2A7B 62%,#8134AF 88%,#515BD4)",boxShadow:"0 8px 24px rgba(221,42,123,0.28)" }}>
+                    <IconInstagram size={17}/> {t.app.shareToStories}
+                  </button>
                   <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
                     <button className="share-btn" onClick={()=>share("instagram")}><IconInstagram size={14}/> Instagram</button>
                     <button className="share-btn" onClick={()=>share("tiktok")}><IconTikTok size={14}/> TikTok</button>
