@@ -15,7 +15,7 @@ import {
 import { auth } from "@/lib/firebase";
 import { useI18n, LangSwitch, type Dict } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
-import { isInAppBrowser, isMobile } from "@/lib/in-app-browser";
+import { isInAppBrowser } from "@/lib/in-app-browser";
 import { InAppBrowserBanner } from "@/components/InAppBrowserBanner";
 
 function authMessage(err: AuthError, t: Dict): string {
@@ -81,16 +81,22 @@ export default function SignIn() {
     setLoading(true);
     setError("");
     try {
-      // Mobile browsers often suppress popups — redirect is more reliable there.
-      // Desktop keeps the popup so users stay on the page.
-      if (isMobile()) {
-        await signInWithRedirect(auth, new GoogleAuthProvider());
-        return; // page navigates away; result handled on return
-      }
+      // Popup over redirect — even on mobile. signInWithRedirect silently fails
+      // when the browser partitions third-party storage (Safari/iOS, modern
+      // Chrome): our authDomain (*.firebaseapp.com) differs from the app domain,
+      // so on return getRedirectResult is empty and the user is bounced back to
+      // sign-in. The popup completes as a first-party context on firebaseapp.com
+      // and posts the credential back, sidestepping the cookie block.
       await signInWithPopup(auth, new GoogleAuthProvider());
       afterAuth();
     } catch (e) {
-      console.error("[google sign-in]", (e as AuthError)?.code, e);
+      const code = (e as AuthError)?.code;
+      // Only if the browser hard-blocks the popup do we fall back to redirect.
+      if (code === "auth/popup-blocked") {
+        try { await signInWithRedirect(auth, new GoogleAuthProvider()); return; }
+        catch (re) { console.error("[google sign-in redirect]", re); }
+      }
+      console.error("[google sign-in]", code, e);
       const msg = authMessage(e as AuthError, t);
       if (msg) setError(msg);
       setLoading(false);
