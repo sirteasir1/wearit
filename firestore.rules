@@ -17,6 +17,14 @@ service cloud.firestore {
       }
     }
 
+    // Style Arena live matches — a signed-in player may READ a match they're part
+    // of, so the battle syncs in real time via onSnapshot. All writes go through
+    // the server (Admin SDK), so client writes stay denied.
+    match /arena_matches/{matchId} {
+      allow read:  if request.auth != null && request.auth.uid in resource.data.uids;
+      allow write: if false;
+    }
+
     // No access to anything else
     match /{document=**} {
       allow read, write: if false;

@@ -86,6 +86,15 @@ export const IconBattle = ({ size = 18, style, strokeWidth = 1.5 }: P) => (
   </svg>
 );
 
+/* Arena — crossed swords (the outfit-battle game) */
+export const IconArena = ({ size = 18, style, strokeWidth = 1.5 }: P) => (
+  <svg {...base(size)} style={style}>
+    <path d="M14.5 3.5 19 4l.5 4.5-9 9-2 .5-.5-2 9-9z" stroke="currentColor" strokeWidth={strokeWidth} strokeLinejoin="round" />
+    <path d="M9.5 3.5 5 4l-.5 4.5 9 9 2 .5.5-2-9-9z" stroke="currentColor" strokeWidth={strokeWidth} strokeLinejoin="round" />
+    <path d="M5 19l2-2M19 19l-2-2" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" />
+  </svg>
+);
+
 /* Copy link */
 export const IconLink = ({ size = 18, style, strokeWidth = 1.5 }: P) => (
   <svg {...base(size)} style={style}>

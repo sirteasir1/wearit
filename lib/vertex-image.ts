@@ -75,3 +75,60 @@ export async function generateBodyFromSelfie(
   const mime = img.inlineData.mimeType || "image/png";
   return `data:${mime};base64,${img.inlineData.data}`;
 }
+
+/**
+ * Style Arena — dress the person from their photo in a full outfit built for a
+ * THEME. Optional `garments` are the player's own wardrobe pieces (base64, no
+ * prefix) that the model should incorporate, so a look can be "from my closet"
+ * AND AI-completed at once. Returns a data:image/* URL.
+ */
+export async function generateThemedLook(
+  personBase64: string,
+  personMime: string,
+  opts: { brief: string; vibes?: string[]; garments?: { data: string; mime: string }[] } = { brief: "" },
+): Promise<string> {
+  if (!PROJECT_ID) throw new Error("GOOGLE_CLOUD_PROJECT_ID not set");
+  const model = "gemini-2.5-flash-image";
+  const endpoint = `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/${model}:generateContent`;
+
+  const vibe = opts.vibes?.length ? ` Style direction: ${opts.vibes.join(", ")}.` : "";
+  const useOwn = opts.garments?.length
+    ? " Incorporate the additional clothing item(s) shown in the following image(s) into the outfit where they fit the theme, and complete the rest of the look yourself."
+    : "";
+
+  const prompt =
+    `Using the face and likeness of the person in the FIRST photo, generate a photorealistic ` +
+    `FULL-LENGTH studio photo of the SAME person, the ENTIRE body visible head to toe including feet, ` +
+    `standing relaxed and facing the camera. Keep their face, hairstyle, skin tone and gender exactly. ` +
+    `Dress them head-to-toe in ${opts.brief}.${vibe}${useOwn} Make it a complete, well-coordinated outfit ` +
+    `(top, bottom or one-piece, footwear, and fitting accessories). Plain seamless studio background, soft even ` +
+    `lighting, natural proportions, no text, no watermark, no props other than worn accessories.`;
+
+  const parts: Array<{ inlineData: { mimeType: string; data: string } } | { text: string }> = [
+    { inlineData: { mimeType: personMime, data: personBase64 } },
+  ];
+  for (const g of opts.garments ?? []) parts.push({ inlineData: { mimeType: g.mime, data: g.data } });
+  parts.push({ text: prompt });
+
+  const token = await getAccessToken();
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts }],
+      generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Vertex image API ${res.status}: ${err.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  const out = data?.candidates?.[0]?.content?.parts ?? [];
+  const img = out.find((p: { inlineData?: { data?: string; mimeType?: string } }) => p.inlineData?.data);
+  if (!img) throw new Error("No image returned from Vertex image API");
+  const mime = img.inlineData.mimeType || "image/png";
+  return `data:${mime};base64,${img.inlineData.data}`;
+}

@@ -38,6 +38,7 @@ const en = {
   nav: {
     tryOn: "Try on",
     stylist: "Stylist",
+    arena: "Arena",
     battle: "Battle",
     wardrobe: "Wardrobe",
     profile: "Profile",
@@ -251,6 +252,8 @@ const en = {
     worksWell: "Works well",
     watchOut: "Watch out",
     shareYourLook: "Share your look",
+    shareToStories: "Share to Stories",
+    storyReady: "Story card ready — pick Instagram → Stories",
     download: "Download",
     copyLink: "Copy link",
     startNewLook: "Start a new look",
@@ -570,6 +573,11 @@ const en = {
     errEmailInUse: "An account with this email already exists.",
     errWeakPass: "Password must be at least 6 characters.",
     errSignUpFailed: "Sign-up failed. Please try again.",
+    // in-app browser (Instagram/TikTok/etc.) — Google sign-in is blocked there
+    inAppTitle: "Open in your browser to use Google",
+    inAppBody: "Google blocks sign-in inside in-app browsers. Tap the menu (⋯) and choose “Open in browser”, or copy the link below — then sign in there. You can also use email below.",
+    inAppCopy: "Copy link",
+    inAppCopied: "Link copied",
   },
 
   verify: {
@@ -615,6 +623,7 @@ const ru: Dict = {
   nav: {
     tryOn: "Примерка",
     stylist: "Стилист",
+    arena: "Арена",
     battle: "Баттл",
     wardrobe: "Гардероб",
     profile: "Профиль",
@@ -828,6 +837,8 @@ const ru: Dict = {
     worksWell: "Что хорошо",
     watchOut: "На что обратить внимание",
     shareYourLook: "Поделиться образом",
+    shareToStories: "В сторис",
+    storyReady: "Карточка готова — выбери Instagram → Сторис",
     download: "Скачать",
     copyLink: "Скопировать ссылку",
     startNewLook: "Новый образ",
@@ -1141,6 +1152,11 @@ const ru: Dict = {
     errEmailInUse: "Аккаунт с таким email уже существует.",
     errWeakPass: "Пароль должен быть не короче 6 символов.",
     errSignUpFailed: "Не удалось зарегистрироваться. Попробуйте ещё раз.",
+    // встроенный браузер (Instagram/TikTok и т.д.) — вход через Google там заблокирован
+    inAppTitle: "Откройте в браузере для входа через Google",
+    inAppBody: "Google блокирует вход через встроенные браузеры приложений. Нажмите меню (⋯) и выберите «Открыть в браузере» или скопируйте ссылку ниже — и войдите там. Либо используйте email ниже.",
+    inAppCopy: "Скопировать ссылку",
+    inAppCopied: "Ссылка скопирована",
   },
 
   verify: {

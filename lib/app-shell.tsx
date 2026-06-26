@@ -7,7 +7,7 @@ import { auth } from "@/lib/firebase";
 import { getProfile, pullRemote, getPlan, claimPendingReferral, Plan } from "@/lib/store";
 import { toast } from "@/lib/toast";
 import { identifyUser, resetAnalytics } from "@/lib/posthog";
-import { IconSpark, IconHanger, IconUser, IconSignOut, IconPanel, IconWand, IconBattle } from "@/lib/icons";
+import { IconSpark, IconHanger, IconUser, IconSignOut, IconPanel, IconWand, IconBattle, IconArena } from "@/lib/icons";
 import { useI18n, LangSwitch } from "@/lib/i18n";
 
 const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
@@ -15,6 +15,7 @@ const PRO_PRODUCT = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
 const NAV = [
   { href: "/app",      Icon: IconSpark,  key: "tryOn"    },
   { href: "/agent",    Icon: IconWand,   key: "stylist"  },
+  { href: "/arena",    Icon: IconArena,  key: "arena"    },
   { href: "/battle",   Icon: IconBattle, key: "battle"   },
   { href: "/wardrobe", Icon: IconHanger, key: "wardrobe" },
   { href: "/profile",  Icon: IconUser,   key: "profile"  },
