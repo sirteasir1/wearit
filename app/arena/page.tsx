@@ -226,7 +226,7 @@ export default function ArenaPage() {
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "28px 18px 96px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
           <span style={{ fontSize: 30, lineHeight: 1 }}>⚔️</span>
-          <h1 className="serif" style={{ fontSize: 38, fontWeight: 700, letterSpacing: "-0.035em", color: "var(--ink)" }}>{tr("title", lang)}</h1>
+          <h1 className="serif" style={{ fontSize: 38, fontWeight: 700, letterSpacing: "-0.035em", background: "linear-gradient(115deg, var(--ink) 10%, var(--brand) 55%, var(--gold))", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>{tr("title", lang)}</h1>
         </div>
         <p style={{ fontSize: 15, color: "var(--muted)", marginBottom: 26, fontWeight: 300 }}>{tr("tagline", lang)}</p>
 
@@ -245,28 +245,37 @@ export default function ArenaPage() {
               </div>
 
               <p style={lblStyle}>{tr("pickTheme", lang)}</p>
-              <p style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 12 }}>{tr("themeHint", lang)}</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 26 }}>
-                <button onClick={() => setSeedTheme(null)} style={chip(!seedTheme)}>{tr("random", lang)}</button>
+              <p style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 14 }}>{tr("themeHint", lang)}</p>
+              <div className="arena-scroll" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(104px,1fr))", gap: 10, marginBottom: 24, maxHeight: 372, overflowY: "auto", paddingRight: 4 }}>
+                <ThemeTile selected={!seedTheme} emoji="🎲" label={lang === "ru" ? "Случайная" : "Surprise"} onClick={() => setSeedTheme(null)} />
                 {THEMES.map((tm) => (
-                  <button key={tm.id} onClick={() => setSeedTheme(tm)} style={chip(seedTheme?.id === tm.id)}>{tm.emoji} {tm.label[lang]}</button>
+                  <ThemeTile key={tm.id} selected={seedTheme?.id === tm.id} emoji={tm.emoji} label={tm.label[lang]} onClick={() => setSeedTheme(tm)} />
                 ))}
               </div>
 
-              <button onClick={findRival} disabled={busy === "queue"} className="btn-dark btn-ready" style={ctaStyle}>
+              <motion.button whileTap={{ scale: 0.98 }} onClick={findRival} disabled={busy === "queue"} className="btn-dark"
+                style={{ ...ctaStyle, background: "linear-gradient(100deg,#1A1611,#2F4C6E)", boxShadow: "0 12px 30px rgba(47,76,110,0.28)" }}>
                 {busy === "queue" ? <><div className="spinner" style={{ width: 18, height: 18 }} /> {tr("searching", lang)}</> : <>⚔️ {tr("findRival", lang)}</>}
-              </button>
+              </motion.button>
             </motion.div>
           )}
 
           {/* ── SEARCHING ── (shows instantly while the first poll resolves) */}
           {matchId && (!match || status === "waiting") && (
-            <motion.div key="searching" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ textAlign: "center", padding: "60px 20px" }}>
-              <motion.div animate={{ scale: [1, 1.12, 1], opacity: [0.6, 1, 0.6] }} transition={{ duration: 1.4, repeat: Infinity }} style={{ fontSize: 56, marginBottom: 22 }}>🛰️</motion.div>
-              <h2 className="serif" style={{ fontSize: 24, fontWeight: 600, color: "var(--ink)", marginBottom: 8 }}>{tr("searching", lang)}</h2>
+            <motion.div key="searching" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ textAlign: "center", padding: "52px 20px" }}>
+              <div style={{ position: "relative", width: 148, height: 148, margin: "0 auto 28px" }}>
+                {[0, 0.6, 1.2].map((d) => (
+                  <motion.span key={d} style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "2px solid var(--brand-ring)" }}
+                    initial={{ scale: 0.35, opacity: 0.8 }} animate={{ scale: 1.45, opacity: 0 }} transition={{ duration: 1.9, repeat: Infinity, delay: d, ease: "easeOut" }} />
+                ))}
+                <span style={{ position: "absolute", inset: 28, borderRadius: "50%", background: "var(--brand-soft)" }} />
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 2.6, repeat: Infinity, ease: "linear" }}
+                  style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 46 }}>🛰️</motion.div>
+              </div>
+              <h2 className="serif" style={{ fontSize: 24, fontWeight: 700, color: "var(--ink)", marginBottom: 8 }}>{tr("searching", lang)}</h2>
               <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 8 }}>{tr("searchingSub", lang)}</p>
               {match && <p style={{ fontSize: 13, color: "var(--faint)", marginBottom: 26 }}>{themeOf(match, lang)}</p>}
-              <button onClick={leave} className="btn-ghost" style={ghostStyle}><IconX size={15} /> {tr("cancel", lang)}</button>
+              <button onClick={leave} className="btn-ghost" style={{ ...ghostStyle, width: "auto", margin: "0 auto" }}><IconX size={15} /> {tr("cancel", lang)}</button>
             </motion.div>
           )}
 
@@ -440,13 +449,21 @@ function ResultScreen({ lang, me, opp, winnerUid, myUid, callout, revealed, onAg
 
   return (
     <div>
-      <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 16 }} style={{ textAlign: "center", marginBottom: 18 }}>
-        <h2 className="serif" style={{ fontSize: 30, fontWeight: 700, color: headColor, letterSpacing: "-0.03em" }}>{headline}</h2>
-      </motion.div>
+      <div style={{ position: "relative" }}>
+        {iWon && revealed && <Burst />}
+        <motion.div initial={{ scale: 0.7, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 260, damping: 15 }} style={{ textAlign: "center", marginBottom: 18, position: "relative", zIndex: 2 }}>
+          <h2 className="serif" style={{ fontSize: 32, fontWeight: 800, color: headColor, letterSpacing: "-0.03em" }}>{headline}</h2>
+        </motion.div>
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: opp ? "1fr auto 1fr" : "1fr", alignItems: "start", gap: 12, marginBottom: 22 }}>
         <LookColumn label={tr("you", lang)} img={me.lookUrl} score={me.score} highlight={iWon || tie} crown={iWon} revealed={revealed} lang={lang} />
-        {opp && <div style={{ alignSelf: "center", fontWeight: 800, fontSize: 20, color: "var(--faint)", paddingTop: 30 }}>VS</div>}
+        {opp && (
+          <motion.div initial={{ scale: 0, rotate: -25 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 300, damping: 12, delay: 0.15 }}
+            style={{ alignSelf: "center", paddingTop: 30 }}>
+            <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 100, background: "var(--dark)", color: "var(--gold)", fontWeight: 800, fontSize: 15, boxShadow: "0 6px 18px rgba(0,0,0,0.22)" }}>VS</span>
+          </motion.div>
+        )}
         {opp && <LookColumn label={opp.name} img={opp.lookUrl} score={opp.score} highlight={!iWon && !tie} crown={!iWon && !tie} revealed={revealed} lang={lang} />}
       </div>
 
@@ -478,8 +495,9 @@ function LookColumn({ label, img, score, highlight, crown, revealed, lang }: {
              : <div style={{ width: "100%", aspectRatio: "3/4", background: "var(--sand)" }} />}
         {score && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: revealed ? 1 : 0 }} transition={{ delay: 0.3 }}
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 10px 8px", background: "linear-gradient(transparent, rgba(0,0,0,0.78))", color: "#fff", textAlign: "center" }}>
-            <span style={{ fontSize: 26, fontWeight: 800, lineHeight: 1 }}>{score.total}</span><span style={{ fontSize: 13, opacity: 0.7 }}>/30</span>
+            style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "26px 10px 10px", background: "linear-gradient(transparent, rgba(0,0,0,0.82))", color: "#fff", textAlign: "center" }}>
+            <span className="serif" style={{ fontSize: 38, fontWeight: 800, lineHeight: 1, color: highlight ? "#F4D58A" : "#fff" }}><CountUp to={score.total} on={revealed} /></span>
+            <span style={{ fontSize: 14, opacity: 0.65 }}>/100</span>
           </motion.div>
         )}
       </div>
@@ -507,6 +525,63 @@ function Bar({ label, v, revealed, d }: { label: string; v: number; revealed: bo
         <motion.div initial={{ width: 0 }} animate={{ width: revealed ? `${v * 10}%` : 0 }} transition={{ delay: d + 0.2, duration: 0.6, ease: "easeOut" }}
           style={{ height: "100%", borderRadius: 100, background: v >= 8 ? "var(--gold)" : "var(--brand)" }} />
       </div>
+    </div>
+  );
+}
+
+/* A score that ticks up from 0 → value with an ease-out, for a premium reveal. */
+function CountUp({ to, on }: { to: number; on: boolean }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!on) return;
+    let raf = 0; const start = performance.now(); const dur = 950;
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - start) / dur);
+      setN(Math.round((1 - Math.pow(1 - p, 3)) * to));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [to, on]);
+  return <>{n}</>;
+}
+
+/* A theme card in the lobby grid — hover-lifts, glows when selected. */
+function ThemeTile({ selected, emoji, label, onClick }: { selected: boolean; emoji: string; label: string; onClick: () => void }) {
+  return (
+    <motion.button whileHover={{ y: -3 }} whileTap={{ scale: 0.95 }} onClick={onClick}
+      style={{
+        position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 7,
+        padding: "15px 8px", borderRadius: 16, cursor: "pointer", minHeight: 92,
+        border: selected ? "1.5px solid var(--brand)" : "1px solid var(--border)",
+        background: selected ? "linear-gradient(160deg, var(--brand-soft), var(--card))" : "var(--card)",
+        boxShadow: selected ? "0 10px 28px rgba(47,76,110,0.20)" : "0 2px 8px rgba(0,0,0,0.04)",
+        transition: "box-shadow .2s, border-color .2s",
+      }}>
+      <span style={{ fontSize: 27, lineHeight: 1 }}>{emoji}</span>
+      <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink)", textAlign: "center", lineHeight: 1.2 }}>{label}</span>
+      {selected && (
+        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 16 }}
+          style={{ position: "absolute", top: 6, right: 6, width: 18, height: 18, borderRadius: 100, background: "var(--brand)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><IconCheck size={11} /></motion.span>
+      )}
+    </motion.button>
+  );
+}
+
+/* Deterministic confetti burst (computed once at module load — no render-time
+   randomness, so it stays lint-clean). Fired behind the winner headline. */
+const BURST = Array.from({ length: 26 }).map((_, i) => {
+  const a = (i / 26) * Math.PI * 2;
+  const dist = 120 + (i % 6) * 26;
+  return { x: Math.cos(a) * dist, y: Math.sin(a) * dist - 30, r: (i * 57) % 360, c: ["#B08A3E", "#2F4C6E", "#3E6492", "#D9A441", "#8134AF"][i % 5], d: (i % 7) * 0.04 };
+});
+function Burst() {
+  return (
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1, overflow: "visible" }}>
+      {BURST.map((p, i) => (
+        <motion.span key={i} initial={{ x: 0, y: 0, opacity: 1, scale: 1 }} animate={{ x: p.x, y: p.y, opacity: 0, rotate: p.r, scale: 0.5 }} transition={{ duration: 1.2, delay: p.d, ease: "easeOut" }}
+          style={{ position: "absolute", width: 8, height: 13, borderRadius: 2, background: p.c }} />
+      ))}
     </div>
   );
 }

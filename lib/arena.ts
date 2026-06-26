@@ -42,6 +42,25 @@ export const THEMES: Theme[] = [
   { id: "demure",      emoji: "🤫", label: { en: "Very demure",              ru: "Скромно и мило" },           brief: "a 'very demure, very mindful' outfit — modest, polished, understated workwear in soft neutral tones" },
   { id: "dark-academia",emoji:"📚", label: { en: "Dark academia",            ru: "Тёмная академия" },          brief: "a dark-academia outfit — tweed blazer, wool, pleated trousers or skirt, vintage scholarly layers" },
   { id: "eboy-egirl",  emoji: "🖤", label: { en: "E-boy / e-girl",           ru: "Иган-стиль" },               brief: "an e-boy/e-girl outfit — black layers, chains, striped long sleeve, baggy pants, grungy internet style" },
+  // ── more TikTok / niche / trending aesthetics ──
+  { id: "tomato-girl", emoji: "🍅", label: { en: "Tomato girl",              ru: "Tomato girl" },              brief: "a 'tomato girl' Italian-summer outfit — red prints, linen, sundress, breezy Mediterranean vibe" },
+  { id: "coastal-gma", emoji: "🧺", label: { en: "Coastal grandma",          ru: "Бабуля у моря" },            brief: "a 'coastal grandmother' outfit — linen, neutral knits, straw hat, relaxed seaside chic" },
+  { id: "balletcore",  emoji: "🩰", label: { en: "Balletcore",               ru: "Балеткор" },                 brief: "a balletcore outfit — soft pastels, wrap top, leg warmers, ballet flats, dancer-inspired" },
+  { id: "mermaidcore", emoji: "🧜", label: { en: "Mermaidcore",              ru: "Русалкокор" },               brief: "a mermaidcore outfit — iridescent fabrics, scale textures, sea-blue and pearl tones, flowing shapes" },
+  { id: "cottagecore", emoji: "🍄", label: { en: "Cottagecore",              ru: "Коттеджкор" },               brief: "a cottagecore outfit — floral prints, prairie dress, cardigan, soft rural romantic style" },
+  { id: "indie-sleaze",emoji: "🚬", label: { en: "Indie sleaze",             ru: "Инди-слиз" },                brief: "an indie sleaze outfit — messy 2010s party style, leather jacket, band tee, skinny jeans, flash-photo grunge" },
+  { id: "tenniscore",  emoji: "🎾", label: { en: "Tenniscore",               ru: "Теннискор" },                brief: "a tenniscore outfit — pleated skirt, polo, sweater vest, preppy sporty country-club look" },
+  { id: "rockstar-gf", emoji: "🎸", label: { en: "Rockstar girlfriend",      ru: "Девушка рокзвезды" },        brief: "a 'rockstar girlfriend' outfit — leather, vintage band tee, fur coat, edgy effortless cool" },
+  { id: "whimsigoth",  emoji: "🔮", label: { en: "Whimsigoth",               ru: "Вимсигот" },                 brief: "a whimsigoth outfit — dark mystical 90s style, velvet, star and moon motifs, witchy layers" },
+  { id: "acubi",       emoji: "🦋", label: { en: "Acubi",                    ru: "Acubi" },                    brief: "an acubi Korean Y2K outfit — sleek low-rise, butterfly motifs, cyber-grunge minimal streetwear" },
+  { id: "roman-empire",emoji: "🏛️", label: { en: "Roman Empire",             ru: "Римская империя" },          brief: "a modern outfit inspired by the Roman Empire — toga-draped silhouettes, gladiator sandals, gold, marble tones" },
+  { id: "sigma",       emoji: "📈", label: { en: "Sigma grindset",           ru: "Сигма" },                    brief: "a 'sigma grindset' outfit — sharp dark business-casual, turtleneck or fitted suit, lone-wolf CEO energy" },
+  { id: "tradwife",    emoji: "🥧", label: { en: "Tradwife",                 ru: "Традвайф" },                 brief: "a 'tradwife' outfit — 1950s housewife style, fitted floral dress, apron, pearls, retro homemaker chic" },
+  { id: "twilight",    emoji: "🐺", label: { en: "2012 Tumblr",              ru: "Twilight 2012" },            brief: "a 2012-Tumblr / Twilight-era outfit — moody flannel, band tees, infinity scarf, grungy small-town vibe" },
+  { id: "eclectic-gpa",emoji: "🧓", label: { en: "Eclectic grandpa",         ru: "Дедуля-эстет" },             brief: "an 'eclectic grandpa' outfit — cozy knit vest, corduroy, patterned shirt, vintage layered menswear" },
+  { id: "rich-mom",    emoji: "🛍️", label: { en: "Rich mom",                 ru: "Богатая мама" },             brief: "a 'rich mom' outfit — oversized blazer, leggings, designer bag, sleek sunglasses, polished off-duty luxe" },
+  { id: "blueberry-milk",emoji:"🫐", label: { en: "Blueberry milk",           ru: "Черничное молоко" },         brief: "a 'blueberry milk' outfit — soft blue and white pastel coordinated look, cozy and dreamy" },
+  { id: "jellyfish",   emoji: "🪼", label: { en: "Avant-garde",              ru: "Авангард" },                 brief: "an avant-garde experimental outfit — sculptural shapes, unexpected proportions, runway art-fashion" },
 ];
 
 export function themeById(id: string): Theme | undefined {
@@ -68,7 +87,7 @@ export interface LookScore {
   themeFit: number;     // 0–10
   coordination: number; // 0–10
   originality: number;  // 0–10
-  total: number;        // 0–30
+  total: number;        // 0–100 (overall score)
   roast: string;        // one honest, funny line about the OUTFIT
 }
 

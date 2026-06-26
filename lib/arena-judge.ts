@@ -28,7 +28,7 @@ function normalize(raw: Partial<LookScore> | undefined): LookScore {
     themeFit,
     coordination,
     originality,
-    total: themeFit + coordination + originality,
+    total: Math.round(((themeFit + coordination + originality) / 30) * 100), // 0–100
     roast: (raw?.roast || "").toString().slice(0, 180),
   };
 }
@@ -80,7 +80,7 @@ function fallbackRoast(lang: Lang): string {
 
 /** Score a single look with no opponent (you're first in this theme). */
 export async function judgeSolo(imageA: string, themeBrief: string, lang: Lang): Promise<Verdict> {
-  const empty: LookScore = { themeFit: 5, coordination: 5, originality: 5, total: 15, roast: fallbackRoast(lang) };
+  const empty: LookScore = { themeFit: 5, coordination: 5, originality: 5, total: 50, roast: fallbackRoast(lang) };
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return { a: empty, b: empty, winner: "a", callout: fallbackRoast(lang) };
 
@@ -107,7 +107,7 @@ export async function judgeSolo(imageA: string, themeBrief: string, lang: Lang):
 export async function judgeBattle(imageA: string, imageB: string, themeBrief: string, lang: Lang): Promise<Verdict> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    const even: LookScore = { themeFit: 5, coordination: 5, originality: 5, total: 15, roast: fallbackRoast(lang) };
+    const even: LookScore = { themeFit: 5, coordination: 5, originality: 5, total: 50, roast: fallbackRoast(lang) };
     return { a: even, b: even, winner: "tie", callout: fallbackRoast(lang) };
   }
 
@@ -140,7 +140,7 @@ export async function judgeBattle(imageA: string, imageB: string, themeBrief: st
     return { a, b, winner, callout: (parsed.callout || "").toString().slice(0, 200) || fallbackRoast(lang) };
   } catch (e) {
     console.error("[arena-judge:battle]", e instanceof Error ? e.message : e);
-    const even: LookScore = { themeFit: 5, coordination: 5, originality: 5, total: 15, roast: fallbackRoast(lang) };
+    const even: LookScore = { themeFit: 5, coordination: 5, originality: 5, total: 50, roast: fallbackRoast(lang) };
     return { a: even, b: even, winner: "tie", callout: fallbackRoast(lang) };
   }
 }
